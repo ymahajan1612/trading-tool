@@ -1,4 +1,5 @@
 import config
+import algorithms
 import pandas as pd
 import requests
 import matplotlib.pyplot as plt
@@ -6,12 +7,11 @@ import matplotlib.dates as dates
 
 pd.set_option('display.max_columns', None)
 short_term = 10
-mid_term = 50
-long_term = 100
+long_term = 40
 ticker_data = dict()
 
 # temporary measure in place to avoid timeout from too many calls to alpha_vantage
-testing_on_going = False
+testing_on_going = True
 
 def fetchData(ticker,testing=False):
     url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker}&outputsize=full&apikey={config.API_KEY}"
@@ -36,10 +36,9 @@ def fetchData(ticker,testing=False):
 def calculateSMA(stock_dataframe):
     # Calculate SMAs
     stock_dataframe['SMA_short'] = stock_dataframe['Close'].rolling(window=short_term).mean()
-    stock_dataframe['SMA_mid'] = stock_dataframe['Close'].rolling(window=mid_term).mean()
     stock_dataframe['SMA_long'] = stock_dataframe['Close'].rolling(window=long_term).mean()
 
-    trimmed_data = stock_dataframe.tail(long_term)
+    trimmed_data = stock_dataframe.tail(100)
 
     return trimmed_data
 
@@ -61,7 +60,6 @@ def generatePlot(stock_data):
         ax.plot([row['Date'], row['Date']], [row['High'], lower + height], color='k')
 
     ax.plot(stock_data_plot['Date'], stock_data_plot['SMA_short'], label='{}-day SMA'.format(short_term), color='blue')
-    ax.plot(stock_data_plot['Date'], stock_data_plot['SMA_mid'], label='{}-day SMA'.format(mid_term), color='orange')
     ax.plot(stock_data_plot['Date'], stock_data_plot['SMA_long'], label='{}-day SMA'.format(long_term), color='purple')
 
     # Formatting the date on x-axis
@@ -81,13 +79,14 @@ def generatePlot(stock_data):
 
     
 if not testing_on_going:
-    full_data = fetchData('TSLA',True)
+    full_data = fetchData('SPY',True)
 else:
     full_data = pd.read_csv('stock_dataframe_test.csv',index_col=0)
     full_data.index = pd.to_datetime(full_data.index)
 
 
 sma_calculated = calculateSMA(full_data)
-print(ticker_data)
 
-generatePlot(sma_calculated)
+
+trading_signal = algorithms.checkSMACrossOver(sma_calculated)
+
