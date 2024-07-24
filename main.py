@@ -1,5 +1,5 @@
 import config
-from Algorithm import SMACrossOver
+from Algorithm import SMACrossOver, MACD
 import pandas as pd
 import requests
 import matplotlib.pyplot as plt
@@ -44,11 +44,15 @@ def generatePlot(algorithm):
         ax.plot([row['Date'], row['Date']], [row['Low'], lower], color='k')
         ax.plot([row['Date'], row['Date']], [row['High'], lower + height], color='k')
 
+    # SMA Crossover algorithm
     if 'SMA_short' in stock_data_plot.columns:
         ax.plot(stock_data_plot['Date'], stock_data_plot['SMA_short'], label='{}-day SMA'.format(algorithm.getShortWindow()), color='blue')
     if 'SMA_long' in stock_data_plot.columns:
         ax.plot(stock_data_plot['Date'], stock_data_plot['SMA_long'], label='{}-day SMA'.format(algorithm.getLongWindow()), color='purple')
-    ax.plot(stock_data_plot['Date'], stock_data_plot['Close'], label='Stock Price', color='black', linestyle='-', linewidth=1)
+    
+    # MACD algorithm
+    if 'MACD' in stock_data_plot.columns:
+        ax.plot(stock_data_plot['Date'], stock_data_plot['MACD'], label='MACD', color='magenta')
     
     # Formatting the date on x-axis
     ax.xaxis_date()
@@ -72,7 +76,5 @@ else:
     full_data = pd.read_csv('stock_dataframe_test.csv',index_col=0)
     full_data.index = pd.to_datetime(full_data.index)
 
-
-SMAAlgorithm = SMACrossOver(full_data, 10, 40)
-
-generatePlot(SMAAlgorithm)
+MACDAlgorithm = MACD(full_data)
+generatePlot(MACDAlgorithm)
