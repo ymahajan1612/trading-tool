@@ -35,7 +35,7 @@ class Algorithm(ABC):
         raise NotImplementedError()
     
 
-class SMACrossOver(Algorithm):
+class SMACrossOverAlgorithm(Algorithm):
     def __init__(self, data, short_window, long_window):
         super().__init__(data, short_window, long_window)
 
@@ -43,7 +43,7 @@ class SMACrossOver(Algorithm):
         self.data['SMA_short'] = self.calculateSMA(self.short_window)
         self.data['SMA_long'] = self.calculateSMA(self.long_window)
 
-        self.data = self.data.tail(90)
+        self.data = self.data.tail(200)
     
     def generateSignal(self):
         """
@@ -65,26 +65,25 @@ class SMACrossOver(Algorithm):
         return 0
 
 
-class MACD(Algorithm):
+class MACDAlgorithm(Algorithm):
     def __init__(self, data, short_window=12, long_window=26, signal_window=9):
         self.signal_window = signal_window
         super().__init__(data, short_window, long_window)
         
-
-
     def preprocessData(self):
-        self.data['EMA_short'] = self.calculateEMA(self.short_window)
-        self.data['EMA_long'] = self.calculateEMA(self.long_window)
-        self.data['MACD'] = self.data['EMA_short'] - self.data['EMA_long']
+        self.data['EMA_200'] = self.calculateEMA(200) 
+        self.data['MACD'] = self.calculateEMA(self.short_window) - self.calculateEMA(self.long_window)
         self.data['signal_line'] = self.data['MACD'].ewm(span=self.signal_window, adjust=False).mean()
-        
+        self.data['MACD_histogram'] = self.data['MACD'] - self.data['signal_line']
+        self.data.fillna(0, inplace=True)
+        self.data = self.data.tail(200)
+
     def generateSignal(self):
         curr = self.data.iloc[-1]
         prev = self.data.iloc[-2]
 
-        if (prev['MACD'] < prev['Signal_Line']) and (curr['MACD'] > curr['Signal_Line']) and (curr['MACD_Histogram'] > 0):
-            # Generate a buy signal when there an up-trend (Histogram is above 0) and MACD crosses above signal
+        if (prev['MACD'] < prev['signal_line']) and (curr['MACD'] > curr['signal_line']) and (curr['MACD_histogram'] < 0) and (curr['Closing'] > curr['EMA_200']):
             return 1  # Buy signal
-        if (prev['MACD'] > prev['Signal_Line']) and (curr['MACD'] < curr['Signal_Line']) and (curr['MACD_Histogram'] < 0):
+        if (prev['MACD'] > prev['signal_line']) and (curr['MACD'] < curr['signal_line']) and (curr['MACD_histogram'] > 0) and (curr['Closing'] < curr['EMA_200']):
             return -1  # Sell signal
         return 0  # Hold signal
