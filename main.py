@@ -1,5 +1,5 @@
 import config
-from Algorithm import SMACrossOverAlgorithm, MACDAlgorithm
+from Algorithm import SMACrossOverAlgorithm, MACDAlgorithm, LSTMAlgorithm
 import pandas as pd
 import requests
 import matplotlib.pyplot as plt
@@ -55,7 +55,7 @@ def generatePlot(algorithm):
     
 
     # MACD algorithm
-    if 'MACD' in stock_data_plot.columns:
+    if isinstance(algorithm,MACDAlgorithm):
         stock_data_plot['MACD_histogram'] *= 1.5
        
         ax.plot(stock_data_plot['Date'], stock_data_plot['MACD'], label='MACD', color='magenta')
@@ -86,7 +86,8 @@ else:
     full_data = pd.read_csv('stock_dataframe_test.csv',index_col=0)
     full_data.index = pd.to_datetime(full_data.index)
 
-MACD = MACDAlgorithm(full_data)
 
-generatePlot(MACD)
-print(MACD.generateSignal())
+LSTM = LSTMAlgorithm(full_data, 10, 30)
+
+
+

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import numpy as np 
 
 class Algorithm(ABC):
     def __init__(self,data, short_window, long_window):
@@ -87,3 +88,44 @@ class MACDAlgorithm(Algorithm):
         if (prev['MACD'] > prev['signal_line']) and (curr['MACD'] < curr['signal_line']) and (curr['MACD_histogram'] > 0) and (curr['Closing'] < curr['EMA_200']):
             return -1  # Sell signal
         return 0  # Hold signal
+
+
+
+class LSTMAlgorithm(Algorithm):
+    def __init__(self, data, short_window, long_window):
+        super().__init__(data, short_window, long_window)
+        self.data_as_np = self.data.copy().to_numpy()
+        self.features, self.labels = self.convertData()
+
+    def preprocessData(self):
+        self.data['SMA_short'] = self.calculateSMA(self.short_window)
+        self.data['SMA_long'] = self.calculateSMA(self.long_window)
+        self.data['EMA_short'] = self.calculateEMA(12)
+        self.data['EMA_long'] = self.calculateEMA(26)
+
+        self.data = self.data.tail(len(self.data)-self.long_window)
+
+
+
+    def convertData(self, window_size = 14):
+        """
+        Converts the dataframe to features (X) and the corresponding labels (y)
+        The features will contain the Open, High, Low, Volume and 
+        technical indicators (SMAs and EMAs)
+        The label will contain the Closing price for that day
+        window_size: The number of previous days the algorithm will look at 
+        to predict the closing price
+        """
+        X = []
+        y = []
+
+        for i in range(len(self.data_as_np) - window_size):
+            row = [day for day in self.data_as_np[i: i + window_size]]
+            X.append(row)
+            label = self.data.iloc[i+window_size]['Close']
+            y.append(label)
+        return np.array(X), np.array(y)
+        
+
+    def generateSignal(self):   
+        return 1
