@@ -1,5 +1,5 @@
 import config
-from Algorithm import SMACrossOverAlgorithm, MACDAlgorithm
+from Algorithm import BollingerBandStrategy, SMACrossOverStrategy, MACDStrategy
 import pandas as pd
 import requests
 import matplotlib.pyplot as plt
@@ -8,7 +8,7 @@ import matplotlib.dates as dates
 pd.set_option('display.max_columns', None)
 
 # temporary measure in place to avoid timeout from too many calls to alpha_vantage
-testing_on_going = True
+testing_on_going = False
 
 def fetchData(ticker):
     url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker}&outputsize=full&apikey={config.API_KEY}"
@@ -35,7 +35,7 @@ def generatePlot(algorithm):
     fig, ax = plt.subplots(figsize=(14, 8))
 
     # SMA Crossover algorithm
-    if isinstance(algorithm,SMACrossOverAlgorithm):
+    if isinstance(algorithm,SMACrossOverStrategy):
         stock_data_plot = stock_data_plot.tail(90)
         ax.plot(stock_data_plot['Date'], stock_data_plot['SMA_short'], label='{}-day SMA'.format(algorithm.getShortWindow()), color='blue')
         ax.plot(stock_data_plot['Date'], stock_data_plot['SMA_long'], label='{}-day SMA'.format(algorithm.getLongWindow()), color='purple')
@@ -55,8 +55,7 @@ def generatePlot(algorithm):
     
 
     # MACD algorithm
-    if 'MACD' in stock_data_plot.columns:
-        stock_data_plot['MACD_histogram'] *= 1.5
+    if isinstance(algorithm, MACDStrategy):
        
         ax.plot(stock_data_plot['Date'], stock_data_plot['MACD'], label='MACD', color='magenta')
         ax.plot(stock_data_plot['Date'], stock_data_plot['signal_line'], label='Signal Line', color='orange')
@@ -64,6 +63,11 @@ def generatePlot(algorithm):
             colour = 'g' if row['MACD_histogram'] > 0 else 'r'
             ax.bar(row['Date'], row['MACD_histogram'], color=colour, width=1)
         ax.axhline(y = 0, color='black', linewidth=1, linestyle="-")
+    
+
+
+
+
     # Formatting the date on x-axis
     ax.xaxis_date()
     ax.xaxis.set_major_formatter(dates.DateFormatter('%Y-%m-%d'))
@@ -86,7 +90,4 @@ else:
     full_data = pd.read_csv('stock_dataframe_test.csv',index_col=0)
     full_data.index = pd.to_datetime(full_data.index)
 
-MACD = MACDAlgorithm(full_data)
 
-generatePlot(MACD)
-print(MACD.generateSignal())
