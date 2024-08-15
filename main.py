@@ -8,7 +8,7 @@ import matplotlib.dates as dates
 pd.set_option('display.max_columns', None)
 
 # temporary measure in place to avoid timeout from too many calls to alpha_vantage
-testing_on_going = False
+testing_on_going = True
 
 def fetchData(ticker):
     url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker}&outputsize=full&apikey={config.API_KEY}"
@@ -28,59 +28,58 @@ def fetchData(ticker):
     return stock_dataframe
 
 
-def generatePlot(algorithm):
-    stock_data_plot = algorithm.getData().copy()
-    stock_data_plot['Date'] = dates.date2num(stock_data_plot.index)
+# def generatePlot(algorithm):
+#     stock_data_plot = algorithm.getData().copy()
+#     stock_data_plot['Date'] = dates.date2num(stock_data_plot.index)
 
-    fig, ax = plt.subplots(figsize=(14, 8))
+#     fig, ax = plt.subplots(figsize=(14, 8))
 
-    # SMA Crossover algorithm
-    if isinstance(algorithm,SMACrossOverStrategy):
-        stock_data_plot = stock_data_plot.tail(90)
-        ax.plot(stock_data_plot['Date'], stock_data_plot['SMA_short'], label='{}-day SMA'.format(algorithm.getShortWindow()), color='blue')
-        ax.plot(stock_data_plot['Date'], stock_data_plot['SMA_long'], label='{}-day SMA'.format(algorithm.getLongWindow()), color='purple')
-        # Plot the candlestick chart
-        for idx, row in stock_data_plot.iterrows():
-            colour = 'g' if row['Close'] >= row['Open'] else 'r'
-            lower = min(row['Open'], row['Close'])
-            height = abs(row['Close'] - row['Open'])
+#     # SMA Crossover algorithm
+#     if isinstance(algorithm,SMACrossOverStrategy):
+#         stock_data_plot = stock_data_plot.tail(90)
+#         ax.plot(stock_data_plot['Date'], stock_data_plot['SMA_short'], label='{}-day SMA'.format(algorithm.getShortWindow()), color='blue')
+#         ax.plot(stock_data_plot['Date'], stock_data_plot['SMA_long'], label='{}-day SMA'.format(algorithm.getLongWindow()), color='purple')
+#         # Plot the candlestick chart
+#         for idx, row in stock_data_plot.iterrows():
+#             colour = 'g' if row['Close'] >= row['Open'] else 'r'
+#             lower = min(row['Open'], row['Close'])
+#             height = abs(row['Close'] - row['Open'])
 
-            ax.add_patch(plt.Rectangle((row['Date'] - 0.3, lower), 0.6, height, color=colour))
-            ax.plot([row['Date'], row['Date']], [row['Low'], lower], color='k')
-            ax.plot([row['Date'], row['Date']], [row['High'], lower + height], color='k')
+#             ax.add_patch(plt.Rectangle((row['Date'] - 0.3, lower), 0.6, height, color=colour))
+#             ax.plot([row['Date'], row['Date']], [row['Low'], lower], color='k')
+#             ax.plot([row['Date'], row['Date']], [row['High'], lower + height], color='k')
 
-            # Plot the closing price
-            plt.plot(stock_data_plot['Date'], stock_data_plot['Close'], label='Close Price', color='black', linestyle='-', linewidth=1)
+#             # Plot the closing price
+#             plt.plot(stock_data_plot['Date'], stock_data_plot['Close'], label='Close Price', color='black', linestyle='-', linewidth=1)
     
     
 
-    # MACD algorithm
-    if isinstance(algorithm, MACDStrategy):
+#     # MACD algorithm
+#     if isinstance(algorithm, MACDStrategy):
        
-        ax.plot(stock_data_plot['Date'], stock_data_plot['MACD'], label='MACD', color='magenta')
-        ax.plot(stock_data_plot['Date'], stock_data_plot['signal_line'], label='Signal Line', color='orange')
-        for idx, row in stock_data_plot.iterrows():
-            colour = 'g' if row['MACD_histogram'] > 0 else 'r'
-            ax.bar(row['Date'], row['MACD_histogram'], color=colour, width=1)
-        ax.axhline(y = 0, color='black', linewidth=1, linestyle="-")
+#         ax.plot(stock_data_plot['Date'], stock_data_plot['MACD'], label='MACD', color='magenta')
+#         ax.plot(stock_data_plot['Date'], stock_data_plot['signal_line'], label='Signal Line', color='orange')
+#         for idx, row in stock_data_plot.iterrows():
+#             colour = 'g' if row['MACD_histogram'] > 0 else 'r'
+#             ax.bar(row['Date'], row['MACD_histogram'], color=colour, width=1)
+#         ax.axhline(y = 0, color='black', linewidth=1, linestyle="-")
     
 
 
 
+#     # Formatting the date on x-axis
+#     ax.xaxis_date()
+#     ax.xaxis.set_major_formatter(dates.DateFormatter('%Y-%m-%d'))
+#     plt.xticks(rotation=45)
 
-    # Formatting the date on x-axis
-    ax.xaxis_date()
-    ax.xaxis.set_major_formatter(dates.DateFormatter('%Y-%m-%d'))
-    plt.xticks(rotation=45)
+#     # Adding labels and legend
+#     ax.set_xlabel('Date')
+#     ax.set_ylabel('Price')
+#     ax.set_title('Stock Price')
+#     ax.legend()
 
-    # Adding labels and legend
-    ax.set_xlabel('Date')
-    ax.set_ylabel('Price')
-    ax.set_title('Stock Price')
-    ax.legend()
-
-    # Show the plot
-    plt.show()
+#     # Show the plot
+#     plt.show()
     
 
     
@@ -91,3 +90,5 @@ else:
     full_data.index = pd.to_datetime(full_data.index)
 
 
+BollingerBands = BollingerBandStrategy(full_data)
+BollingerBands.generatePlot()

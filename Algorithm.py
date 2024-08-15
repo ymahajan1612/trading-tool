@@ -1,11 +1,13 @@
 from abc import ABC, abstractmethod
-
+import matplotlib.pyplot as plt
+import matplotlib.dates as dates
 
 class Algorithm(ABC):
     def __init__(self,data, short_window=None, long_window=None):
         self.data = data
         self.short_window = short_window
         self.long_window = long_window
+        self.plot_window = 60
         self.preprocessData()
     
     def getData(self):
@@ -33,6 +35,10 @@ class Algorithm(ABC):
     
     @abstractmethod
     def generateSignal(self):
+        raise NotImplementedError()
+    
+    @abstractmethod
+    def generatePlot(self):
         raise NotImplementedError()
     
 
@@ -64,6 +70,34 @@ class SMACrossOverStrategy(Algorithm):
 
         # Hold
         return 0
+    
+    def generatePlot(self):
+        stock_data_plot = self.data.tail(self.plot_window).copy()
+        stock_data_plot['Date'] = dates.date2num(stock_data_plot.index)
+        print(stock_data_plot)
+        fig, ax = plt.subplots(figsize=(14, 8))
+        ax.plot(stock_data_plot['Date'], stock_data_plot['SMA_short'], label='{}-day SMA'.format(self.short_window), color='blue')
+        ax.plot(stock_data_plot['Date'], stock_data_plot['SMA_long'], label='{}-day SMA'.format(self.long_window), color='purple')
+
+        # Custom candlestick plot
+        for idx, row in stock_data_plot.iterrows():
+            colour = 'g' if row['Close'] >= row['Open'] else 'r'
+            lower = min(row['Open'], row['Close'])
+            height = abs(row['Close'] - row['Open'])
+            ax.add_patch(plt.Rectangle((row['Date'] - 0.3, lower), 0.6, height, color=colour))
+            ax.plot([row['Date'], row['Date']], [row['Low'], lower], color='k')
+            ax.plot([row['Date'], row['Date']], [row['High'], lower + height], color='k')
+        plt.plot(stock_data_plot['Date'], stock_data_plot['Close'], label='Close Price', color='black', linestyle='-', linewidth=1)
+
+        ax.set_xlabel('Date')
+        ax.xaxis_date()  # Convert the x-axis to date format
+        ax.xaxis.set_major_formatter(dates.DateFormatter('%Y-%m-%d'))  # Format dates
+        ax.set_ylabel('Price')
+        ax.set_title('SMA Crossover Strategy')
+        ax.legend()
+        plt.xticks(rotation=45)
+        plt.show()
+
 
 
 class MACDStrategy(Algorithm):
@@ -75,7 +109,7 @@ class MACDStrategy(Algorithm):
         self.data['EMA_200'] = self.calculateEMA(200) 
         self.data['MACD'] = self.calculateEMA(self.short_window) - self.calculateEMA(self.long_window)
         self.data['Signal_line'] = self.data['MACD'].ewm(span=self.signal_window, adjust=False).mean()
-        self.data['MACD_histogram'] = self.data['MACD'] - self.data['signal_line']
+        self.data['MACD_histogram'] = self.data['MACD'] - self.data['Signal_line']
         self.data.fillna(0, inplace=True)
         self.data = self.data.tail(200)
 
@@ -83,19 +117,41 @@ class MACDStrategy(Algorithm):
         curr = self.data.iloc[-1]
         prev = self.data.iloc[-2]
 
-        if (prev['MACD'] < prev['signal_line'] and 
-            curr['MACD'] > curr['signal_line'] and 
+        if (prev['MACD'] < prev['Signal_line'] and 
+            curr['MACD'] > curr['Signal_line'] and 
             curr['MACD_histogram'] < 0 and 
             curr['Closing'] > curr['EMA_200']):
             return 1  # Buy signal
         
-        if (prev['MACD'] > prev['signal_line'] and 
-            curr['MACD'] < curr['signal_line'] and 
+        if (prev['MACD'] > prev['Signal_line'] and 
+            curr['MACD'] < curr['Signal_line'] and 
             curr['MACD_histogram'] > 0 and 
             curr['Closing'] < curr['EMA_200']):
             return -1  # Sell signal
         
         return 0  # Hold signal
+
+    def generatePlot(self):
+        stock_data_plot = self.data.tail(self.plot_window).copy()
+        stock_data_plot['Date'] = dates.date2num(stock_data_plot.index)
+
+        fig, ax = plt.subplots(figsize=(14, 8))
+        ax.plot(stock_data_plot['Date'], stock_data_plot['MACD'], label='MACD', color='blue')
+        ax.plot(stock_data_plot['Date'], stock_data_plot['Signal_line'], label='Signal Line', color='orange')
+        
+        for idx, row in stock_data_plot.iterrows():
+            colour = 'g' if row['MACD_histogram'] > 0 else 'r'
+            ax.bar(row['Date'], row['MACD_histogram'], color=colour, width=1)
+
+        ax.axhline(y=0, color='black', linewidth=1, linestyle="-")
+        ax.xaxis_date()  # Convert the x-axis to date format
+        ax.xaxis.set_major_formatter(dates.DateFormatter('%Y-%m-%d'))  # Format dates
+        ax.set_xlabel('Date')
+        ax.set_ylabel('MACD Value')
+        ax.set_title('MACD Strategy')
+        ax.legend()
+        plt.xticks(rotation=45)
+        plt.show()
 
 
 
@@ -171,7 +227,41 @@ class BollingerBandStrategy(Algorithm):
     
         return 0 
 
+    def generatePlot(self):
+        stock_data_plot = self.data.tail(self.plot_window).copy()
+        stock_data_plot['Date'] = dates.date2num(stock_data_plot.index)
+
+        fig, ax = plt.subplots(figsize=(14, 8))
+        
+        # Plot the Bollinger Bands and the SMA
+        ax.plot(stock_data_plot['Date'], stock_data_plot['SMA'], label='20-day SMA', color='blue')
+        ax.plot(stock_data_plot['Date'], stock_data_plot['UB'], label='Upper Bollinger Band', color='purple')
+        ax.plot(stock_data_plot['Date'], stock_data_plot['LB'], label='Lower Bollinger Band', color='red')
 
 
+        # Plot the candlestick chart
+        for idx, row in stock_data_plot.iterrows():
+            color = 'g' if row['Close'] >= row['Open'] else 'r'
+            lower = min(row['Open'], row['Close'])
+            height = abs(row['Close'] - row['Open'])
+            ax.add_patch(plt.Rectangle((row['Date'] - 0.3, lower), 0.6, height, color=color))
+            ax.plot([row['Date'], row['Date']], [row['Low'], lower], color='k')
+            ax.plot([row['Date'], row['Date']], [row['High'], lower + height], color='k')
+        plt.plot(stock_data_plot['Date'], stock_data_plot['Close'], label='Close Price', color='black', linestyle='-', linewidth=1)
+        #     # Plot RSI as a secondary y-axis
+        # ax2 = ax.twinx()
+        # ax2.plot(stock_data_plot['Date'], stock_data_plot['RSI'], label='RSI', color='orange')
+        # ax2.axhline(y=self.RSI_threshold_high, color='red', linestyle='--')
+        # ax2.axhline(y=self.RSI_threshold_low, color='green', linestyle='--')
+        # ax2.set_ylabel('RSI')
 
-
+        # Final formatting
+        ax.set_xlabel('Date')
+        ax.set_ylabel('Price')
+        ax.set_title('Bollinger Bands Strategy')
+        ax.legend(loc='upper left')
+        ax.legend(loc='upper right')
+        ax.xaxis_date()
+        ax.xaxis.set_major_formatter(dates.DateFormatter('%Y-%m-%d'))
+        plt.xticks(rotation=45)
+        plt.show()
