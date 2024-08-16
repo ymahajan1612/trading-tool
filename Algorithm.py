@@ -172,15 +172,21 @@ class BollingerBandStrategy(Algorithm):
 
         self.data['Band_width'] = (self.data['UB'] - self.data['LB']) / self.data['SMA']
 
-        changes = self.data['Close'].diff()
-        gains = changes.where(changes > 0, 0) 
-        losses = changes.where(changes < 0, 0) 
+        delta = self.data['Close'].diff()
+        delta.dropna(inplace=True)
 
-        average_gains = gains.rolling(window=self.window, min_periods=1).mean()
-        average_losses = losses.rolling(window=self.window, min_periods=1).mean()
+        positive = delta.copy()
+        negative = delta.copy()
 
-        relative_strength = average_gains/average_losses
-        self.data['RSI'] = 100 - (100/(1+relative_strength))
+        positive[positive < 0] = 0
+        negative[negative > 0] = 0
+
+        average_gain = positive.rolling(window=14).mean()
+        average_loss = abs(negative.rolling(window=14).mean())
+        relative_strength = average_gain/average_loss
+        RSI = 100.0 - (100.0/(1.0 + relative_strength))
+        self.data['RSI'] = RSI
+        
         self.data = self.data.tail(200)
     
     def generateSignal(self):
@@ -231,8 +237,7 @@ class BollingerBandStrategy(Algorithm):
         stock_data_plot = self.data.tail(self.plot_window).copy()
         stock_data_plot['Date'] = dates.date2num(stock_data_plot.index)
 
-        fig, ax = plt.subplots(figsize=(14, 8))
-        
+        fig, (ax, ax2) = plt.subplots(2, 1, figsize=(14, 8), sharex=True, gridspec_kw={'height_ratios': [2, 1]})
         # Plot the Bollinger Bands and the SMA
         ax.plot(stock_data_plot['Date'], stock_data_plot['SMA'], label='20-day SMA', color='blue')
         ax.plot(stock_data_plot['Date'], stock_data_plot['UB'], label='Upper Bollinger Band', color='purple')
@@ -247,20 +252,19 @@ class BollingerBandStrategy(Algorithm):
             ax.add_patch(plt.Rectangle((row['Date'] - 0.3, lower), 0.6, height, color=color))
             ax.plot([row['Date'], row['Date']], [row['Low'], lower], color='k')
             ax.plot([row['Date'], row['Date']], [row['High'], lower + height], color='k')
-        plt.plot(stock_data_plot['Date'], stock_data_plot['Close'], label='Close Price', color='black', linestyle='-', linewidth=1)
-        #     # Plot RSI as a secondary y-axis
-        # ax2 = ax.twinx()
-        # ax2.plot(stock_data_plot['Date'], stock_data_plot['RSI'], label='RSI', color='orange')
-        # ax2.axhline(y=self.RSI_threshold_high, color='red', linestyle='--')
-        # ax2.axhline(y=self.RSI_threshold_low, color='green', linestyle='--')
-        # ax2.set_ylabel('RSI')
+        ax.plot(stock_data_plot['Date'], stock_data_plot['Close'], label='Close Price', color='black', linestyle='-', linewidth=1)
+        # Plot RSI as a secondary y-axis
+        ax2.plot(stock_data_plot['Date'], stock_data_plot['RSI'], label='RSI', color='orange')
+        ax2.axhline(y=self.RSI_threshold_high, color='red', linestyle='--')
+        ax2.axhline(y=self.RSI_threshold_low, color='green', linestyle='--')
+        ax2.set_ylabel('RSI')
 
         # Final formatting
         ax.set_xlabel('Date')
         ax.set_ylabel('Price')
         ax.set_title('Bollinger Bands Strategy')
         ax.legend(loc='upper left')
-        ax.legend(loc='upper right')
+        ax2.legend(loc='upper left')
         ax.xaxis_date()
         ax.xaxis.set_major_formatter(dates.DateFormatter('%Y-%m-%d'))
         plt.xticks(rotation=45)
