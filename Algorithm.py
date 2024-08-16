@@ -1,37 +1,38 @@
 from abc import ABC, abstractmethod
 import matplotlib.pyplot as plt
 import matplotlib.dates as dates
-
+import copy
 class Algorithm(ABC):
     def __init__(self,data, short_window=None, long_window=None):
         self.data = data
+        self.historical_data = copy.deepcopy(data.getDataFrame())
         self.short_window = short_window
         self.long_window = long_window
         self.plot_window = 60
         self.preprocessData()
     
-    def getData(self):
-        return self.data 
-
     def getShortWindow(self):
         return self.short_window
 
     def getLongWindow(self):
         return self.long_window
 
+    def getData(self):
+        return self.historical_data
+
     @abstractmethod
     def preprocessData(self):
         raise NotImplementedError()
     
     def calculateSMA(self, window):
-        return self.data['Close'].rolling(window=window).mean()
+        return self.historical_data['Close'].rolling(window=window).mean()
     
     def calculateEMA(self, window):
         """
         Calculates a weighted average,
         by giving more weight to the recent points in a window
         """
-        return self.data['Close'].ewm(span=window, adjust=False).mean()
+        return self.historical_data['Close'].ewm(span=window, adjust=False).mean()
     
     @abstractmethod
     def generateSignal(self):
@@ -44,21 +45,21 @@ class Algorithm(ABC):
 
 class SMACrossOverStrategy(Algorithm):
     def __init__(self, data, short_window, long_window):
-        super().__init__(data.copy(), short_window, long_window)
+        super().__init__(data, short_window, long_window)
 
     def preprocessData(self):
-        self.data['SMA_short'] = self.calculateSMA(self.short_window)
-        self.data['SMA_long'] = self.calculateSMA(self.long_window)
+        self.historical_data['SMA_short'] = self.calculateSMA(self.short_window)
+        self.historical_data['SMA_long'] = self.calculateSMA(self.long_window)
 
-        self.data = self.data.tail(200)
+        self.historical_data = self.historical_data.tail(200)
     
     def generateSignal(self):
         """
         Returns:
         int: 1 for buy signal, -1 for sell signal, and 0 for hold.
         """
-        curr = self.data.iloc[-1]
-        prev = self.data.iloc[-2]
+        curr = self.historical_data.iloc[-1]
+        prev = self.historical_data.iloc[-2]
 
         # Generate Buy Signal
         if (prev.SMA_short < prev.SMA_long) and (curr.SMA_short > curr.SMA_long):
@@ -72,7 +73,7 @@ class SMACrossOverStrategy(Algorithm):
         return 0
     
     def generatePlot(self):
-        stock_data_plot = self.data.tail(self.plot_window).copy()
+        stock_data_plot = self.historical_data.tail(self.plot_window).copy()
         stock_data_plot['Date'] = dates.date2num(stock_data_plot.index)
         print(stock_data_plot)
         fig, ax = plt.subplots(figsize=(14, 8))
@@ -103,19 +104,19 @@ class SMACrossOverStrategy(Algorithm):
 class MACDStrategy(Algorithm):
     def __init__(self, data, short_window=12, long_window=26, signal_window=9):
         self.signal_window = signal_window
-        super().__init__(data.copy(), short_window, long_window)
+        super().__init__(data, short_window, long_window)
         
     def preprocessData(self):
-        self.data['EMA_200'] = self.calculateEMA(200) 
-        self.data['MACD'] = self.calculateEMA(self.short_window) - self.calculateEMA(self.long_window)
-        self.data['Signal_line'] = self.data['MACD'].ewm(span=self.signal_window, adjust=False).mean()
-        self.data['MACD_histogram'] = self.data['MACD'] - self.data['Signal_line']
-        self.data.fillna(0, inplace=True)
-        self.data = self.data.tail(200)
+        self.historical_data['EMA_200'] = self.calculateEMA(200) 
+        self.historical_data['MACD'] = self.calculateEMA(self.short_window) - self.calculateEMA(self.long_window)
+        self.historical_data['Signal_line'] = self.historical_data['MACD'].ewm(span=self.signal_window, adjust=False).mean()
+        self.historical_data['MACD_histogram'] = self.historical_data['MACD'] - self.historical_data['Signal_line']
+        self.historical_data.fillna(0, inplace=True)
+        self.historical_data = self.historical_data.tail(200)
 
     def generateSignal(self):
-        curr = self.data.iloc[-1]
-        prev = self.data.iloc[-2]
+        curr = self.historical_data.iloc[-1]
+        prev = self.historical_data.iloc[-2]
 
         if (prev['MACD'] < prev['Signal_line'] and 
             curr['MACD'] > curr['Signal_line'] and 
@@ -132,7 +133,7 @@ class MACDStrategy(Algorithm):
         return 0  # Hold signal
 
     def generatePlot(self):
-        stock_data_plot = self.data.tail(self.plot_window).copy()
+        stock_data_plot = self.historical_data.tail(self.plot_window).copy()
         stock_data_plot['Date'] = dates.date2num(stock_data_plot.index)
 
         fig, ax = plt.subplots(figsize=(14, 8))
@@ -161,18 +162,18 @@ class BollingerBandStrategy(Algorithm):
         self.RSI_threshold_high = 70
         self.RSI_threshold_low = 30
         self.band_width_threshold = 0.0015
-        super().__init__(data.copy(),None,None)
+        super().__init__(data,None,None)
     
     def preprocessData(self):
-        self.data['SMA'] = self.calculateSMA(20)
-        self.data['SD'] = self.data['Close'].rolling(window=self.window).std()
+        self.historical_data['SMA'] = self.calculateSMA(20)
+        self.historical_data['SD'] = self.historical_data['Close'].rolling(window=self.window).std()
 
-        self.data['UB'] = self.data['SMA'] + (2 * self.data['SD'])
-        self.data['LB'] = self.data['SMA'] - (2 * self.data['SD'])
+        self.historical_data['UB'] = self.historical_data['SMA'] + (2 * self.historical_data['SD'])
+        self.historical_data['LB'] = self.historical_data['SMA'] - (2 * self.historical_data['SD'])
 
-        self.data['Band_width'] = (self.data['UB'] - self.data['LB']) / self.data['SMA']
+        self.historical_data['Band_width'] = (self.historical_data['UB'] - self.historical_data['LB']) / self.historical_data['SMA']
 
-        delta = self.data['Close'].diff()
+        delta = self.historical_data['Close'].diff()
         delta.dropna(inplace=True)
 
         positive = delta.copy()
@@ -185,9 +186,9 @@ class BollingerBandStrategy(Algorithm):
         average_loss = abs(negative.rolling(window=14).mean())
         relative_strength = average_gain/average_loss
         RSI = 100.0 - (100.0/(1.0 + relative_strength))
-        self.data['RSI'] = RSI
+        self.historical_data['RSI'] = RSI
         
-        self.data = self.data.tail(200)
+        self.historical_data = self.historical_data.tail(200)
     
     def generateSignal(self):
         """
@@ -198,8 +199,8 @@ class BollingerBandStrategy(Algorithm):
         4. Current closes above previous high
         vice verse for a sell signal.
         """
-        curr = self.data.iloc[-1]
-        prev = self.data.iloc[-2]
+        curr = self.historical_data.iloc[-1]
+        prev = self.historical_data.iloc[-2]
 
         # 1
         prev_close_below_band = prev['Close'] < prev['LB']
@@ -234,7 +235,7 @@ class BollingerBandStrategy(Algorithm):
         return 0 
 
     def generatePlot(self):
-        stock_data_plot = self.data.tail(self.plot_window).copy()
+        stock_data_plot = self.historical_data.tail(self.plot_window).copy()
         stock_data_plot['Date'] = dates.date2num(stock_data_plot.index)
 
         fig, (ax, ax2) = plt.subplots(2, 1, figsize=(14, 8), sharex=True, gridspec_kw={'height_ratios': [2, 1]})
