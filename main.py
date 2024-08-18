@@ -1,7 +1,9 @@
 from Algorithm import BollingerBandStrategy, SMACrossOverStrategy, MACDStrategy
 from Data import StockData
+from Backtest import Backtester
 
-VODStock = StockData('VOD')
+Stock = StockData('LGEN')
 
-
-
+BollingerBand = BollingerBandStrategy(Stock)
+backtesting = Backtester(BollingerBand, Stock, 1000)
+backtesting.run()
