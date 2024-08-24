@@ -12,7 +12,8 @@ class StockData:
             self.data = pd.read_csv('stock_dataframe_test.csv',index_col=0)
             self.data.index = pd.to_datetime(self.data.index)
         else:
-            self.data = self.fetchData()  # Removed the unnecessary parameters
+            self.data = self.fetchData()
+            self.data.to_csv("stock_dataframe_test.csv")
     
     def getTicker(self):
         return self.ticker
@@ -32,8 +33,6 @@ class StockData:
         stock_dataframe.index = pd.to_datetime(stock_dataframe.index)  # Convert index to datetime
         stock_dataframe = stock_dataframe.sort_index()  # Sort the DataFrame by date
         stock_dataframe.index.name = "Date"
-
-        stock_dataframe.to_csv("stock_dataframe_test.csv")
 
         return stock_dataframe
     

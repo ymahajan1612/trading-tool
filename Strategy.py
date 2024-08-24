@@ -1,11 +1,13 @@
 from abc import ABC, abstractmethod
 import matplotlib.pyplot as plt
 import matplotlib.dates as dates
+import pandas as pd
 import copy
-class Algorithm(ABC):
-    def __init__(self,data, short_window=None, long_window=None):
-        self.data = data
-        self.historical_data = copy.deepcopy(data.getDataFrame())
+
+class Strategy(ABC):
+    def __init__(self,stock, short_window=None, long_window=None):
+        self.stock = stock
+        self.historical_data = copy.deepcopy(stock.getDataFrame())
         self.short_window = short_window
         self.long_window = long_window
         self.plot_window = 60
@@ -13,6 +15,13 @@ class Algorithm(ABC):
     
     def getData(self):
         return self.historical_data
+
+    def generateSignalSeries(self):
+        signals = [0]
+        for i in range(1, len(self.historical_data)):
+            signals.append(self.generateSignal(current_index=i))
+        
+        return pd.Series(signals, index=self.historical_data.index[:])
 
     @abstractmethod
     def preprocessData(self):
@@ -35,16 +44,22 @@ class Algorithm(ABC):
         raise NotImplementedError()
     
 
-class SMACrossOverStrategy(Algorithm):
-    def __init__(self, data, short_window, long_window):
-        super().__init__(data, short_window, long_window)
+class SMACrossOverStrategy(Strategy):
+    def __init__(self, stock, short_window, long_window):
+        super().__init__(stock, short_window, long_window)
 
     def preprocessData(self):
         self.historical_data['SMA_short'] = self.calculateSMA(self.short_window)
         self.historical_data['SMA_long'] = self.calculateSMA(self.long_window)
-
         self.historical_data = self.historical_data.tail(200)
-     
+        
+
+    def getShortWindow(self):
+        return self.short_window
+
+    def getLongWindow(self):
+        return self.long_window
+    
     def generateSignal(self, current_index = -1):
         """
         Returns:
@@ -72,6 +87,13 @@ class SMACrossOverStrategy(Algorithm):
         ax.plot(stock_data_plot['Date'], stock_data_plot['SMA_short'], label='{}-day SMA'.format(self.short_window), color='blue')
         ax.plot(stock_data_plot['Date'], stock_data_plot['SMA_long'], label='{}-day SMA'.format(self.long_window), color='purple')
 
+        for idx in range(len(stock_data_plot)):
+            row = stock_data_plot.iloc[idx]
+            if self.generateSignal(current_index=idx) == 1:
+                ax.plot(row['Date'], row['Close'], marker='^', markersize=10, color='g')
+            elif self.generateSignal(current_index=idx) == -1:
+                ax.plot(row['Date'], row['Close'], marker='v', markersize=10, color='r')
+            
  
         for idx, row in stock_data_plot.iterrows():
             colour = 'g' if row['Close'] >= row['Open'] else 'r'
@@ -86,25 +108,26 @@ class SMACrossOverStrategy(Algorithm):
         ax.xaxis_date()  # Convert the x-axis to date format
         ax.xaxis.set_major_formatter(dates.DateFormatter('%Y-%m-%d'))  # Format dates
         ax.set_ylabel('Price')
-        ax.set_title('SMA Crossover Strategy for {}'.format(self.data.getTicker()))
+        ax.set_title('SMA Crossover Strategy for {}'.format(self.stock.getTicker()))
         ax.legend()
         plt.xticks(rotation=45)
         plt.show()
 
 
 
-class MACDStrategy(Algorithm):
-    def __init__(self, data, short_window=12, long_window=26, signal_window=9):
+class MACDStrategy(Strategy):
+    def __init__(self, stock, short_window=12, long_window=26, signal_window=9):
         self.signal_window = signal_window
-        super().__init__(data, short_window, long_window)
+        super().__init__(stock, short_window, long_window)
         
     def preprocessData(self):
         self.historical_data['EMA_200'] = self.calculateEMA(200) 
         self.historical_data['MACD'] = self.calculateEMA(self.short_window) - self.calculateEMA(self.long_window)
         self.historical_data['Signal_line'] = self.historical_data['MACD'].ewm(span=self.signal_window, adjust=False).mean()
         self.historical_data['MACD_histogram'] = self.historical_data['MACD'] - self.historical_data['Signal_line']
-        self.historical_data.fillna(0, inplace=True)
-        self.historical_data = self.historical_data.tail(200)
+
+        self.historical_data = self.historical_data.tail(400)
+
     
     def calculateEMA(self, window):
         """
@@ -119,14 +142,12 @@ class MACDStrategy(Algorithm):
 
         if (prev['MACD'] < prev['Signal_line'] and 
             curr['MACD'] > curr['Signal_line'] and 
-            curr['MACD_histogram'] < 0 and 
-            curr['Closing'] > curr['EMA_200']):
+            curr['Close'] > curr['EMA_200']):
             return 1  # Buy signal
         
         if (prev['MACD'] > prev['Signal_line'] and 
             curr['MACD'] < curr['Signal_line'] and 
-            curr['MACD_histogram'] > 0 and 
-            curr['Closing'] < curr['EMA_200']):
+            curr['Close'] < curr['EMA_200']):
             return -1  # Sell signal
         
         return 0  # Hold signal
@@ -148,23 +169,23 @@ class MACDStrategy(Algorithm):
         ax.xaxis.set_major_formatter(dates.DateFormatter('%Y-%m-%d'))  # Format dates
         ax.set_xlabel('Date')
         ax.set_ylabel('MACD Value')
-        ax.set_title('MACD Strategy for {}'.format(self.data.getTicker()))
+        ax.set_title('MACD Strategy for {}'.format(self.stock.getTicker()))
         ax.legend()
         plt.xticks(rotation=45)
         plt.show()
 
 
 
-class BollingerBandStrategy(Algorithm):
-    def __init__(self, data):
-        self.window = 20
+class BollingerBandStrategy(Strategy):
+    def __init__(self, stock):
+        self.window = 30
         self.RSI_threshold_high = 70
         self.RSI_threshold_low = 30
         self.band_width_threshold = 0.15
-        super().__init__(data,None,None)
+        super().__init__(stock,None,None)
     
     def preprocessData(self):
-        self.historical_data['SMA'] = self.calculateSMA(20)
+        self.historical_data['SMA'] = self.calculateSMA(self.window)
         self.historical_data['SD'] = self.historical_data['Close'].rolling(window=self.window).std()
 
         self.historical_data['UB'] = self.historical_data['SMA'] + (2 * self.historical_data['SD'])
@@ -186,8 +207,9 @@ class BollingerBandStrategy(Algorithm):
         relative_strength = average_gain/average_loss
         RSI = 100.0 - (100.0/(1.0 + relative_strength))
         self.historical_data['RSI'] = RSI
+        self.historical_data = self.historical_data.tail(500)
+
         
-        self.historical_data = self.historical_data.tail(200)
     
     def generateSignal(self, current_index = -1):
         """
@@ -206,29 +228,26 @@ class BollingerBandStrategy(Algorithm):
         # 2
         prev_rsi_below_threshold = prev['RSI'] < self.RSI_threshold_low
         # 3
-        band_width_above_threshold = curr['Band_width'] > self.band_width_threshold
-        # 4
-        current_close_above_prev_high = curr['Close'] > prev['High']
+        band_width_above_threshold = True 
+        #curr['Band_width'] > self.band_width_threshold
+
 
         # Generate a buy signal
         if (prev_close_below_band and 
             prev_rsi_below_threshold and
-            band_width_above_threshold and
-            current_close_above_prev_high):
+            band_width_above_threshold):
             return 1
 
 
         # Same check for sell signal
         prev_close_above_band = prev['Close'] > prev['UB']
         prev_rsi_above_threshold = prev['RSI'] > self.RSI_threshold_high
-        current_close_below_prev_low = curr['Close'] < prev['Low']
 
 
         # Generate a sell signal
         if (prev_close_above_band and 
             prev_rsi_above_threshold and
-            band_width_above_threshold and
-            current_close_below_prev_low):
+            band_width_above_threshold):
             return -1 
     
         return 0 
@@ -261,10 +280,11 @@ class BollingerBandStrategy(Algorithm):
 
         ax.set_xlabel('Date')
         ax.set_ylabel('Price')
-        ax.set_title('Bollinger Bands Strategy for {}'.format(self.data.getTicker()))
+        ax.set_title('Bollinger Bands Strategy for {}'.format(self.stock.getTicker()))
         ax.legend(loc='upper left')
         ax2.legend(loc='upper left')
         ax.xaxis_date()
         ax.xaxis.set_major_formatter(dates.DateFormatter('%Y-%m-%d'))
         plt.xticks(rotation=45)
         plt.show()
+

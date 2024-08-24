@@ -1,9 +1,7 @@
-from Algorithm import BollingerBandStrategy, SMACrossOverStrategy, MACDStrategy
+from Strategy import BollingerBandStrategy, SMACrossOverStrategy, MACDStrategy
 from Data import StockData
-from Backtest import Backtester
 
-Stock = StockData('LGEN')
 
-BollingerBand = BollingerBandStrategy(Stock)
-backtesting = Backtester(BollingerBand, Stock, 1000)
-backtesting.run()
+Stock = StockData('AAPL')
+SMA = SMACrossOverStrategy(Stock, 10, 30)
+
