@@ -1,3 +1,9 @@
 # Default ignored files
 /shelf/
 /workspace.xml
+
+# Ignore the test CSV file
+stock_data_frame_test.csv
+
+# Ignore the config file containing sensitive information
+config.py
