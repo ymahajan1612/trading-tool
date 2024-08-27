@@ -1,3 +1,0 @@
-API_KEY = 'MR76930QN3NV4IP6'
-#
-#
