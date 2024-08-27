@@ -29,9 +29,7 @@ class Backtest():
 SMA = SMACrossOverStrategy(stock, 10, 50)
 MACD = MACDStrategy(stock)
 BollingerBand = BollingerBandStrategy(stock)
-backtest = Backtest(MACD)
-portfolio = backtest.run()
-print(portfolio.stats())
+BollingerBand.generatePlot(30)
 
 
 

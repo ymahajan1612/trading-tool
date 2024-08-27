@@ -7,7 +7,7 @@ pd.set_option('display.max_columns', None)
 class StockData:
     def __init__(self, ticker):
         self.ticker = ticker
-        self.testing = False # temporary measure in place to avoid timeout from too many calls to alpha_vantage
+        self.testing = True # temporary measure in place to avoid timeout from too many calls to alpha_vantage
         if self.testing:
             self.error = None 
             self.data = pd.read_csv('stock_dataframe_test.csv',index_col=0)
