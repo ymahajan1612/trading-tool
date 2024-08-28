@@ -10,6 +10,7 @@ class Strategy(ABC):
         self.historical_data = copy.deepcopy(stock.getDataFrame())
         self.short_window = short_window
         self.long_window = long_window
+        self.plot_window = 60
         self.preprocessData()
     
     def getData(self):
@@ -39,7 +40,7 @@ class Strategy(ABC):
         raise NotImplementedError()
     
     @abstractmethod
-    def generatePlot(self,data_points=90):
+    def generatePlot(self):
         raise NotImplementedError()
     
 
@@ -78,8 +79,8 @@ class SMACrossOverStrategy(Strategy):
         # Hold
         return 0
     
-    def generatePlot(self, data_points=90):
-        stock_data_plot = self.historical_data.tail(data_points).copy()
+    def generatePlot(self):
+        stock_data_plot = self.historical_data.tail(self.plot_window).copy()
         stock_data_plot['Date'] = dates.date2num(stock_data_plot.index)
         print(stock_data_plot)
         fig, ax = plt.subplots(figsize=(14, 8))
@@ -151,8 +152,8 @@ class MACDStrategy(Strategy):
         
         return 0  # Hold signal
 
-    def generatePlot(self, data_points=90):
-        stock_data_plot = self.historical_data.tail(data_points).copy()
+    def generatePlot(self):
+        stock_data_plot = self.historical_data.tail(self.plot_window).copy()
         stock_data_plot['Date'] = dates.date2num(stock_data_plot.index)
 
         fig, ax = plt.subplots(figsize=(14, 8))
@@ -176,8 +177,9 @@ class MACDStrategy(Strategy):
 
 
 class BollingerBandStrategy(Strategy):
-    def __init__(self, stock):
-        self.window = 30
+    def __init__(self, stock, window=20, standard_deviations=2):
+        self.window = window
+        self.standard_deviations = standard_deviations
         self.RSI_threshold_high = 70
         self.RSI_threshold_low = 30
         self.band_width_threshold = 0.15
@@ -251,8 +253,8 @@ class BollingerBandStrategy(Strategy):
     
         return 0 
 
-    def generatePlot(self, data_points=90):
-        stock_data_plot = self.historical_data.tail(data_points).copy()
+    def generatePlot(self):
+        stock_data_plot = self.historical_data.tail(self.plot_window).copy()
         stock_data_plot['Date'] = dates.date2num(stock_data_plot.index)
 
         fig, (ax, ax2) = plt.subplots(2, 1, figsize=(14, 8), sharex=True, gridspec_kw={'height_ratios': [2, 1]})
@@ -286,4 +288,3 @@ class BollingerBandStrategy(Strategy):
         ax.xaxis.set_major_formatter(dates.DateFormatter('%Y-%m-%d'))
         plt.xticks(rotation=45)
         plt.show()
-
