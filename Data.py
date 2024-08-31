@@ -37,7 +37,6 @@ class StockData:
         """
         file_path = "{directory}/{symbol}.pkl".format(directory=self.CACHE_DIR,symbol = self.getTicker())
         if os.path.exists(file_path):
-            print("Loading data from cache")
             with open(file_path, 'rb') as stock_data:
                 cached_content = pkl.load(stock_data)
                 if pd.Timestamp.now() - cached_content['Time'] < pd.Timedelta(days=1):
