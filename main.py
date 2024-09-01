@@ -1,4 +1,6 @@
 from Strategy import BollingerBandStrategy, SMACrossOverStrategy, MACDStrategy
 from Data import StockData
-import streamlit as st
+from DatabaseHandler import DBHandler
 
+stock = StockData('AAPL')
+dbTest = DBHandler()

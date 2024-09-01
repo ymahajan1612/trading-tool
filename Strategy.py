@@ -15,6 +15,7 @@ class Strategy(ABC):
     
     def getData(self):
         return self.historical_data
+    
 
     def generateSignalSeries(self):
         signals = [0]
@@ -22,6 +23,10 @@ class Strategy(ABC):
             signals.append(self.generateSignal(current_index=i))
         
         return pd.Series(signals, index=self.historical_data.index[:])
+
+    @abstractmethod
+    def getDataAsDict(self):
+        raise NotImplementedError()
 
     @abstractmethod
     def preprocessData(self):
@@ -52,7 +57,12 @@ class SMACrossOverStrategy(Strategy):
         self.historical_data['SMA_short'] = self.calculateSMA(self.short_window)
         self.historical_data['SMA_long'] = self.calculateSMA(self.long_window)
         self.historical_data = self.historical_data.tail(200)
-        
+
+    def getDataAsDict(self):
+        return {
+            'SMA_short': self.getData()['SMA_short'].to_list(),
+            'SMA_long': self.getData()['SMA_long'].to_list()
+        }        
 
     def getShortWindow(self):
         return self.short_window
@@ -128,7 +138,13 @@ class MACDStrategy(Strategy):
 
         self.historical_data = self.historical_data.tail(400)
 
-    
+    def getDataAsDict(self):
+        return {
+            'MACD': self.getData()['MACD'].to_list(),
+            'Signal_line': self.getData()['Signal_line'].to_list(),
+            'MACD_histogram': self.getData()['MACD_histogram'].to_list()
+        }
+
     def calculateEMA(self, window):
         """
         Calculates a weighted average,
@@ -177,8 +193,9 @@ class MACDStrategy(Strategy):
 
 
 class BollingerBandStrategy(Strategy):
-    def __init__(self, stock):
-        self.window = 30
+    def __init__(self, stock, window=20, standard_deviations=2):
+        self.window = window
+        self.standard_deviations = standard_deviations
         self.RSI_threshold_high = 70
         self.RSI_threshold_low = 30
         self.band_width_threshold = 0.15
@@ -209,7 +226,12 @@ class BollingerBandStrategy(Strategy):
         self.historical_data['RSI'] = RSI
         self.historical_data = self.historical_data.tail(500)
 
-        
+    def getDataAsDict(self):
+        return {
+            'UB': self.getData()['UB'].to_list(),
+            'LB': self.getData()['LB'].to_list(),
+            'RSI': self.getData()['RSI'].to_list()
+        }
     
     def generateSignal(self, current_index = -1):
         """
@@ -287,4 +309,3 @@ class BollingerBandStrategy(Strategy):
         ax.xaxis.set_major_formatter(dates.DateFormatter('%Y-%m-%d'))
         plt.xticks(rotation=45)
         plt.show()
-
