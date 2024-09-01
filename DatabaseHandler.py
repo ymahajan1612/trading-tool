@@ -57,7 +57,7 @@ class DBHandler:
         """
         ticker = strategy.getTicker()
         strategy_data = strategy.getDataAsDict()
-
+        strategy_name = strategy.getName()
         try:
             cursor = self.conn.cursor()
 
@@ -72,6 +72,9 @@ class DBHandler:
             # Get the stock_strategy_id
             stock_strategy_id = cursor.lastrowid
 
+            if stock_strategy_id == 0:
+                return f"Failed to insert strategy {strategy_name} for {ticker}. This strategy might already exist with the given parameters."
+
             # Insert into strategy_data table
             serialized_data = json.dumps(strategy_data, separators=(',', ':'))
             cursor.execute("""
@@ -81,9 +84,7 @@ class DBHandler:
 
             self.conn.commit()
             return None
-        except sqlite3.IntegrityError:
-            self.conn.rollback()
-            return f"Failed to insert strategy for {ticker}. This strategy might already exist with the given parameters."
+        
         except sqlite3.Error as e:
             self.conn.rollback()
             return f"Error inserting strategy for {ticker}: {e}"
