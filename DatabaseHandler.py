@@ -50,11 +50,14 @@ class DBHandler:
             self.conn.rollback()
             print("Error creating tables: ", e)
 
-    def insertStrategy(self, ticker, strategy, strategy_params, strategy_data):
+    def insertStrategy(self, strategy, strategy_params):
         """
         Inserts a stock strategy into the database. If the strategy already exists, it will not be inserted.
         The method adds the stock and strategy to the stock_strategy table, and the strategy data to the strategy_data table.
         """
+        ticker = strategy.getTicker()
+        strategy_data = strategy.getDataAsDict()
+
         try:
             cursor = self.conn.cursor()
 
@@ -63,18 +66,11 @@ class DBHandler:
             cursor.execute("""
             INSERT INTO stock_strategy (ticker, strategy, params)
             VALUES (?, ?, ?)
-            ON CONFLICT DO NOTHING;
-            """, (ticker, strategy, serialized_params))
+            ON CONFLICT(ticker, strategy, params) DO NOTHING;
+            """, (ticker, strategy.getName(), serialized_params))
 
             # Get the stock_strategy_id
-            cursor.execute("""
-            SELECT id FROM stock_strategy
-            WHERE ticker = ? AND strategy = ? AND params = ?;
-            """, (ticker, strategy, serialized_params))
-            stock_strategy_id = cursor.fetchone()[0]
-
-            if not stock_strategy_id:
-                raise Exception("Failed to insert stock strategy")
+            stock_strategy_id = cursor.lastrowid
 
             # Insert into strategy_data table
             serialized_data = json.dumps(strategy_data, separators=(',', ':'))
@@ -84,22 +80,28 @@ class DBHandler:
             """, (stock_strategy_id, serialized_data))
 
             self.conn.commit()
-            print("Strategy inserted successfully")
+            return None
+        except sqlite3.IntegrityError:
+            self.conn.rollback()
+            return f"Failed to insert strategy for {ticker}. This strategy might already exist with the given parameters."
         except sqlite3.Error as e:
             self.conn.rollback()
-            print("Error inserting strategy: ", e)
+            return f"Error inserting strategy for {ticker}: {e}"
+            
 
-    def getStockStrategyId(self, ticker, strategy, strategy_params):
+    def getStockStrategyId(self, strategy, strategy_params):
         """
         given a unique ticker, strategy, and strategy_params combination, returns the stock_strategy_id
         """
         try:
+            ticker = strategy.getTicker()
+            strategy_name = strategy.getName()
             cursor = self.conn.cursor()
             serialized_params = json.dumps(strategy_params, sort_keys=True)
             cursor.execute("""
             SELECT id FROM stock_strategy
             WHERE ticker = ? AND strategy = ? AND params = ?;
-            """, (ticker, strategy, serialized_params))
+            """, (ticker, strategy_name, serialized_params))
             result = cursor.fetchone()
             return result[0] if result else None
         except sqlite3.Error as e:
@@ -124,14 +126,16 @@ class DBHandler:
 
 
 
-    def removeStockStrategy(self, ticker, strategy, strategy_params):
+    def removeStockStrategy(self, strategy, strategy_params):
         """
         Given a unique ticker, strategy, and strategy_params combination, removes the stock strategy from the database.
         """
         try:
+            ticker = strategy.getTicker()
+            strategy_name = strategy.getName()
             stock_strategy_id = self.getStockStrategyId(ticker, strategy, strategy_params)
             if not stock_strategy_id:
-                print(f"No strategy found for {ticker} with {strategy}.")
+                print(f"No strategy found for {ticker} with {strategy_name}.")
                 return
 
             cursor = self.conn.cursor()
@@ -147,7 +151,7 @@ class DBHandler:
             """, (stock_strategy_id,))
 
             self.conn.commit()
-            print(f"Strategy {strategy} for {ticker} successfully removed.")
+            print(f"Strategy {strategy_name} for {ticker} successfully removed.")
         except sqlite3.Error as e:
             self.conn.rollback()
-            print(f"Error: {e} during removal of strategy {strategy} for {ticker}")
+            print(f"Error: {e} during removal of strategy {strategy_name} for {ticker}")
