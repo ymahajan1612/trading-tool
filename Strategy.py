@@ -15,6 +15,7 @@ class Strategy(ABC):
     
     def getData(self):
         return self.historical_data
+    
 
     def generateSignalSeries(self):
         signals = [0]
@@ -22,6 +23,10 @@ class Strategy(ABC):
             signals.append(self.generateSignal(current_index=i))
         
         return pd.Series(signals, index=self.historical_data.index[:])
+
+    @abstractmethod
+    def getDataAsDict(self):
+        raise NotImplementedError()
 
     @abstractmethod
     def preprocessData(self):
@@ -52,7 +57,12 @@ class SMACrossOverStrategy(Strategy):
         self.historical_data['SMA_short'] = self.calculateSMA(self.short_window)
         self.historical_data['SMA_long'] = self.calculateSMA(self.long_window)
         self.historical_data = self.historical_data.tail(200)
-        
+
+    def getDataAsDict(self):
+        return {
+            'SMA_short': self.getData()['SMA_short'].to_list(),
+            'SMA_long': self.getData()['SMA_long'].to_list()
+        }        
 
     def getShortWindow(self):
         return self.short_window
@@ -128,7 +138,13 @@ class MACDStrategy(Strategy):
 
         self.historical_data = self.historical_data.tail(400)
 
-    
+    def getDataAsDict(self):
+        return {
+            'MACD': self.getData()['MACD'].to_list(),
+            'Signal_line': self.getData()['Signal_line'].to_list(),
+            'MACD_histogram': self.getData()['MACD_histogram'].to_list()
+        }
+
     def calculateEMA(self, window):
         """
         Calculates a weighted average,
@@ -210,7 +226,12 @@ class BollingerBandStrategy(Strategy):
         self.historical_data['RSI'] = RSI
         self.historical_data = self.historical_data.tail(500)
 
-        
+    def getDataAsDict(self):
+        return {
+            'UB': self.getData()['UB'].to_list(),
+            'LB': self.getData()['LB'].to_list(),
+            'RSI': self.getData()['RSI'].to_list()
+        }
     
     def generateSignal(self, current_index = -1):
         """
