@@ -13,6 +13,7 @@ class DBHandler:
         except sqlite3.Error as e:
             print("Error establishing connection: ", e)
 
+
     def closeConnection(self):
         if self.conn:
             self.conn.close()
@@ -52,6 +53,7 @@ class DBHandler:
     def insertStrategy(self, ticker, strategy, strategy_params, strategy_data):
         """
         Inserts a stock strategy into the database. If the strategy already exists, it will not be inserted.
+        The method adds the stock and strategy to the stock_strategy table, and the strategy data to the strategy_data table.
         """
         try:
             cursor = self.conn.cursor()
@@ -88,6 +90,9 @@ class DBHandler:
             print("Error inserting strategy: ", e)
 
     def getStockStrategyId(self, ticker, strategy, strategy_params):
+        """
+        given a unique ticker, strategy, and strategy_params combination, returns the stock_strategy_id
+        """
         try:
             cursor = self.conn.cursor()
             serialized_params = json.dumps(strategy_params, sort_keys=True)
@@ -102,6 +107,9 @@ class DBHandler:
             return None
     
     def getStockStrategyData(self, stock_strategy_id):
+        """
+        given a unique stock_strategy_id, returns the strategy data that matches the stock_strategy_id
+        """
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
@@ -114,17 +122,12 @@ class DBHandler:
             print("Error retrieving stock strategy data: ", e)
             return None
 
-    def printTable(self, table_name):
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute(f"SELECT * FROM {table_name};")
-            results = cursor.fetchall()
-            for row in results:
-                print(row)
-        except sqlite3.Error as e:
-            print(f"Error retrieving data from {table_name}: ", e)
+
 
     def removeStockStrategy(self, ticker, strategy, strategy_params):
+        """
+        Given a unique ticker, strategy, and strategy_params combination, removes the stock strategy from the database.
+        """
         try:
             stock_strategy_id = self.getStockStrategyId(ticker, strategy, strategy_params)
             if not stock_strategy_id:
