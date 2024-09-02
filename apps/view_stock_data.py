@@ -15,3 +15,7 @@ def app(stock_strategy_id):
         strategy = get_strategy(strategy_name)(stock, **params)
         plot = strategy.generatePlot()
         st.pyplot(plot)
+        delete_button = st.button("Delete Strategy", key="delete")
+        if delete_button:
+            database_client.removeStockStrategy(stock_strategy_id=stock_strategy_id)
+            st.rerun()

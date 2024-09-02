@@ -145,14 +145,11 @@ class DBHandler:
 
 
 
-    def removeStockStrategy(self, strategy, strategy_params):
+    def removeStockStrategy(self, stock_strategy_id):
         """
         Given a unique ticker, strategy, and strategy_params combination, removes the stock strategy from the database.
         """
         try:
-            ticker = strategy.getTicker()
-            strategy_name = strategy.getName()
-            stock_strategy_id = self.getStockStrategyId(ticker, strategy, strategy_params)
 
             cursor = self.conn.cursor()
 
@@ -162,7 +159,7 @@ class DBHandler:
             """, (stock_strategy_id,))
 
             self.conn.commit()
-            print(f"Strategy {strategy_name} for {ticker} successfully removed.")
+            print(f"Strategy successfully removed.")
         except sqlite3.Error as e:
             self.conn.rollback()
-            print(f"Error: {e} during removal of strategy {strategy_name} for {ticker}")
+            print(f"Error: {e} during removal of strategy")
