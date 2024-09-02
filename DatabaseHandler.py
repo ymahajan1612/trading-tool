@@ -20,9 +20,8 @@ class DBHandler:
     
     def createTables(self):
         """
-        Creates the 2 tables for the database if they don't already exist:
+        Creates:
         - stock_strategy: stores the stock ticker alongside the strategy name, and strategy parameters
-        - strategy_data: stores the strategy data for each stock_strategy record
         """
         try:
             cursor = self.conn.cursor()
@@ -36,15 +35,6 @@ class DBHandler:
                 UNIQUE(ticker, strategy, params)
             );
             """)
-            cursor.execute("""
-            CREATE TABLE IF NOT EXISTS strategy_data (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                stock_strategy_id INTEGER NOT NULL,
-                data TEXT NOT NULL,
-                time_stamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(stock_strategy_id) REFERENCES stock_strategy(id)
-            );
-            """)
             self.conn.commit()
         except sqlite3.Error as e:
             self.conn.rollback()
@@ -53,10 +43,9 @@ class DBHandler:
     def insertStrategy(self, strategy, strategy_params):
         """
         Inserts a stock strategy into the database. If the strategy already exists, it will not be inserted.
-        The method adds the stock and strategy to the stock_strategy table, and the strategy data to the strategy_data table.
         """
         ticker = strategy.getTicker()
-        strategy_data = strategy.getDataAsDict()
+
         strategy_name = strategy.getName()
         try:
             cursor = self.conn.cursor()
@@ -74,14 +63,7 @@ class DBHandler:
 
             if stock_strategy_id == 0:
                 return f"Failed to insert strategy {strategy_name} for {ticker}. This strategy might already exist with the given parameters."
-
-            # Insert into strategy_data table
-            serialized_data = json.dumps(strategy_data, separators=(',', ':'))
-            cursor.execute("""
-            INSERT INTO strategy_data (stock_strategy_id, data)
-            VALUES (?, ?);
-            """, (stock_strategy_id, serialized_data))
-
+            
             self.conn.commit()
             return None
         
@@ -108,21 +90,57 @@ class DBHandler:
         except sqlite3.Error as e:
             print("Error retrieving stock strategy ID: ", e)
             return None
-    
-    def getStockStrategyData(self, stock_strategy_id):
+
+    def getStockStrategy(self, stock_strategy_id):
         """
-        given a unique stock_strategy_id, returns the strategy data that matches the stock_strategy_id
+        Given a stock_strategy_id, returns the stock strategy
         """
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
-            SELECT data FROM strategy_data
-            WHERE stock_strategy_id = ?;
+            SELECT ticker, strategy, params, time_stamp FROM stock_strategy
+            WHERE id = ?;
             """, (stock_strategy_id,))
             result = cursor.fetchone()
-            return json.loads(result[0]) if result else None
+
+            ticker = result[0]
+            strategy = result[1]
+            params = json.loads(result[2])
+            time_stamp = result[3]
+
+            return (ticker, strategy, params, time_stamp)
         except sqlite3.Error as e:
-            print("Error retrieving stock strategy data: ", e)
+            print("Error retrieving stock strategy: ", e)
+            return None
+
+
+    def getAllStockStrategies(self):
+        """
+        Returns all stock strategies in the database
+        """
+        query = """
+        SELECT id, ticker, strategy, params FROM stock_strategy;
+        """
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(query)
+            result = cursor.fetchall()
+
+            stock_strategies = {}
+            for row in result:
+                id = row[0]
+                ticker = row[1]
+                strategy = row[2]
+                params = json.loads(row[3])
+
+                if ticker not in stock_strategies:
+                    stock_strategies[ticker] = []
+                
+                stock_strategies[ticker].append((id,strategy, params))
+
+            return stock_strategies
+        except sqlite3.Error as e:
+            print("Error retrieving all stock strategies: ", e)
             return None
 
 
@@ -135,16 +153,8 @@ class DBHandler:
             ticker = strategy.getTicker()
             strategy_name = strategy.getName()
             stock_strategy_id = self.getStockStrategyId(ticker, strategy, strategy_params)
-            if not stock_strategy_id:
-                print(f"No strategy found for {ticker} with {strategy_name}.")
-                return
 
             cursor = self.conn.cursor()
-
-            # Delete from strategy_data table
-            cursor.execute("""
-            DELETE FROM strategy_data WHERE stock_strategy_id = ?;
-            """, (stock_strategy_id,))
 
             # Delete from stock_strategy table
             cursor.execute("""

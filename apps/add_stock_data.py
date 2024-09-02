@@ -1,12 +1,12 @@
-from Strategy import BollingerBandStrategy, SMACrossOverStrategy, MACDStrategy
+from strategy.Strategy import BollingerBandStrategy, SMACrossOverStrategy, MACDStrategy
 from Data import StockData
 import streamlit as st
 from DatabaseHandler import DBHandler
-
-
+import time
+st.set_page_config(page_title="Stock Trading Strategies Tool", page_icon="📈", layout="wide")
 
 def app():
-    # st.set_page_config(page_title="Stock Trading Strategies Tool", page_icon="📈", layout="wide")
+
     strategy_mapping = {
         "Bollinger Band Strategy": BollingerBandStrategy,
         "SMA Crossover Strategy": SMACrossOverStrategy,
@@ -18,13 +18,14 @@ def app():
         error = stock.getError()
         if error:
             st.error(error,icon="🚨")
-            print("HIiiiii")
         else:
             strategy = strategy_mapping[strategy_str](stock, **strategy_params)
             database_client = DBHandler()
             error = database_client.insertStrategy(strategy, strategy_params)
             if not error:
-                st.success(f"{strategy_str} for {stock_ticker} successfully added!.",icon="🚀")
+                st.success(f"{strategy_str} for {stock_ticker} successfully added!",icon="🚀")
+                time.sleep(2)
+                st.rerun()
             else:
                 st.error(error,icon="🚨")
 
@@ -33,7 +34,7 @@ def app():
     st.markdown("<h1 style='text-align: center;'>Stock Trading Strategies Tool 📈</h1>", unsafe_allow_html=True)
 
     st.markdown("<h2 style='text-align: left;'>Select a Stock Ticker Symbol</h2>", unsafe_allow_html=True)
-    stock_ticker = st.text_input(label = "Stock Ticker",value="AAPL",label_visibility="collapsed")
+    stock_ticker = st.text_input(label = "Stock Ticker",value="AAPL",label_visibility="collapsed").upper()
 
     st.markdown("<h2 style='text-align: left;'>Select a Trading Strategy</h2>", unsafe_allow_html=True)
     strategy_str = st.selectbox("Select Strategy", ["Bollinger Band Strategy", "SMA Crossover Strategy", "MACD Strategy"],label_visibility="collapsed")
@@ -51,9 +52,7 @@ def app():
         strategy_params["window"] = st.slider("Bollinger Band Window", min_value=1, max_value=50, value=20, step=1)
         strategy_params["standard_deviations"] = st.slider("Number of Standard Deviations", min_value=1, max_value=5, value=2, step=1)
 
-    st.markdown("<h2 style='text-align: left;'>Select The Number Of Data Points to Plot</h2>", unsafe_allow_html=True)
-    plot_window = st.slider("Data Points", min_value=30, max_value=100, value=90, step=1,label_visibility="collapsed")
-    strategy_params["plot_window"] = plot_window
+
     enabled = True if stock_ticker and strategy_str else False
 
     save_button = st.button("Add Data", disabled=not enabled)

@@ -131,7 +131,7 @@ class SMACrossOverStrategy(Strategy):
         ax.set_title('SMA Crossover Strategy for {}'.format(self.stock.getTicker()))
         ax.legend()
         plt.xticks(rotation=45)
-        plt.show()
+        return fig
 
 
 
@@ -201,8 +201,7 @@ class MACDStrategy(Strategy):
         ax.set_title('MACD Strategy for {}'.format(self.stock.getTicker()))
         ax.legend()
         plt.xticks(rotation=45)
-        plt.show()
-
+        return fig
 
 
 class BollingerBandStrategy(Strategy):
@@ -294,7 +293,7 @@ class BollingerBandStrategy(Strategy):
         stock_data_plot = self.historical_data.tail(self.plot_window).copy()
         stock_data_plot['Date'] = dates.date2num(stock_data_plot.index)
 
-        fig, (ax, ax2) = plt.subplots(2, 1, figsize=(14, 8), sharex=True, gridspec_kw={'height_ratios': [2, 1]})
+        fig, (ax, ax2) = plt.subplots(2, 1, figsize=(28, 16), sharex=True, gridspec_kw={'height_ratios': [2, 1]})
         # Plot the Bollinger Bands and the SMA
         ax.plot(stock_data_plot['Date'], stock_data_plot['SMA'], label='20-day SMA', color='blue')
         ax.plot(stock_data_plot['Date'], stock_data_plot['UB'], label='Upper Bollinger Band', color='purple')
@@ -324,4 +323,4 @@ class BollingerBandStrategy(Strategy):
         ax.xaxis_date()
         ax.xaxis.set_major_formatter(dates.DateFormatter('%Y-%m-%d'))
         plt.xticks(rotation=45)
-        plt.show()
+        return fig

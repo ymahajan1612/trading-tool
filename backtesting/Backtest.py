@@ -1,6 +1,6 @@
 import vectorbt as vbt
 from Data import StockData
-from Strategy import *
+from strategies.Strategy import *
 
 stock = StockData('AMZN')
 
