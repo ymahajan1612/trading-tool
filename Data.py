@@ -15,20 +15,22 @@ class StockData:
             self.data = pd.read_csv('stock_dataframe_test.csv',index_col=0)
             self.data.index = pd.to_datetime(self.data.index)
         else:
-            #1. Check if data for a stock is stored in cache and is up to date (less than 24 hrs old)
-            #2. If data is not stored in cache, fetch data from alpha vantage API
-            #3. Store the data in cache
             cached_data = self.loadDataFromCache()
             if cached_data is not None:
-                self.data = cached_data
+                self.fetch_time, self.data = cached_data
                 self.error = None
+
             else:
                 self.data, self.error  = self.fetchData()
                 if self.error is None:
                     self.saveDataToCache()
+                    self.fetch_time = pd.Timestamp.now().date()
     
     def getTicker(self):
         return self.ticker
+
+    def getFetchTime(self):
+        return self.fetch_time
     
     def loadDataFromCache(self):
         """
@@ -39,8 +41,8 @@ class StockData:
         if os.path.exists(file_path):
             with open(file_path, 'rb') as stock_data:
                 cached_content = pkl.load(stock_data)
-                if pd.Timestamp.now() - cached_content['Time'] < pd.Timedelta(days=1):
-                    return cached_content['Data']
+                if pd.Timestamp.now().date() == cached_content['fetchDate']:
+                    return cached_content['fetchDate'], cached_content['Data']
         return None
 
 
@@ -50,7 +52,7 @@ class StockData:
         """
         file_path = "{directory}/{symbol}.pkl".format(directory = self.CACHE_DIR, symbol = self.getTicker())
         with open(file_path, 'wb') as stock_data:
-            pkl.dump({'Time': pd.Timestamp.now(), 'Data': self.data}, stock_data)
+            pkl.dump({'fetchDate': pd.Timestamp.now().date(), 'Data': self.data}, stock_data)
 
 
     def fetchData(self):

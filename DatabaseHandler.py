@@ -1,5 +1,6 @@
 import sqlite3
 import json
+import datetime
 
 class DBHandler:
     def __init__(self):
@@ -31,7 +32,6 @@ class DBHandler:
                 ticker TEXT NOT NULL,
                 strategy TEXT NOT NULL,
                 params TEXT NOT NULL,
-                time_stamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(ticker, strategy, params)
             );
             """)
@@ -106,9 +106,8 @@ class DBHandler:
             ticker = result[0]
             strategy = result[1]
             params = json.loads(result[2])
-            time_stamp = result[3]
 
-            return (ticker, strategy, params, time_stamp)
+            return (ticker, strategy, params)
         except sqlite3.Error as e:
             print("Error retrieving stock strategy: ", e)
             return None

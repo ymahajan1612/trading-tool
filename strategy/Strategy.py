@@ -5,12 +5,11 @@ import pandas as pd
 import copy
 
 class Strategy(ABC):
-    def __init__(self,stock, short_window=None, long_window=None, plot_window=60):
+    def __init__(self,stock, short_window=None, long_window=None):
         self.stock = stock
         self.historical_data = copy.deepcopy(stock.getDataFrame())
         self.short_window = short_window
         self.long_window = long_window
-        self.plot_window = plot_window
         self.preprocessData()
     
 
@@ -57,8 +56,8 @@ class Strategy(ABC):
     
 
 class SMACrossOverStrategy(Strategy):
-    def __init__(self, stock, short_window, long_window, plot_window=60):
-        super().__init__(stock, short_window, long_window ,plot_window)
+    def __init__(self, stock, short_window, long_window):
+        super().__init__(stock, short_window, long_window)
 
     def preprocessData(self):
         self.historical_data['SMA_short'] = self.calculateSMA(self.short_window)
@@ -99,8 +98,8 @@ class SMACrossOverStrategy(Strategy):
         # Hold
         return 0
     
-    def generatePlot(self):
-        stock_data_plot = self.historical_data.tail(self.plot_window).copy()
+    def generatePlot(self, plot_window):
+        stock_data_plot = self.historical_data.tail(plot_window).copy()
         stock_data_plot['Date'] = dates.date2num(stock_data_plot.index)
         print(stock_data_plot)
         fig, ax = plt.subplots(figsize=(14, 8))
@@ -136,9 +135,9 @@ class SMACrossOverStrategy(Strategy):
 
 
 class MACDStrategy(Strategy):
-    def __init__(self, stock, short_window=12, long_window=26, signal_window=9, plot_window=60):
+    def __init__(self, stock, short_window=12, long_window=26, signal_window=9):
         self.signal_window = signal_window
-        super().__init__(stock, short_window, long_window, plot_window)
+        super().__init__(stock, short_window, long_window)
         
     def preprocessData(self):
         self.historical_data['EMA_200'] = self.calculateEMA(200) 
@@ -181,8 +180,8 @@ class MACDStrategy(Strategy):
         
         return 0  # Hold signal
 
-    def generatePlot(self):
-        stock_data_plot = self.historical_data.tail(self.plot_window).copy()
+    def generatePlot(self, plot_window):
+        stock_data_plot = self.historical_data.tail(plot_window).copy()
         stock_data_plot['Date'] = dates.date2num(stock_data_plot.index)
 
         fig, ax = plt.subplots(figsize=(14, 8))
@@ -205,13 +204,13 @@ class MACDStrategy(Strategy):
 
 
 class BollingerBandStrategy(Strategy):
-    def __init__(self, stock, window=20, standard_deviations=2, plot_window=60):
+    def __init__(self, stock, window=20, standard_deviations=2):
         self.window = window
         self.standard_deviations = standard_deviations
         self.RSI_threshold_high = 70
         self.RSI_threshold_low = 30
         self.band_width_threshold = 0.15
-        super().__init__(stock,None,None,plot_window)
+        super().__init__(stock,None,None)
     
     def preprocessData(self):
         self.historical_data['SMA'] = self.calculateSMA(self.window)
@@ -289,8 +288,8 @@ class BollingerBandStrategy(Strategy):
     def getName(self):
         return "Bollinger Band Strategy"
 
-    def generatePlot(self):
-        stock_data_plot = self.historical_data.tail(self.plot_window).copy()
+    def generatePlot(self,plot_window):
+        stock_data_plot = self.historical_data.tail(plot_window).copy()
         stock_data_plot['Date'] = dates.date2num(stock_data_plot.index)
 
         fig, (ax, ax2) = plt.subplots(2, 1, figsize=(28, 16), sharex=True, gridspec_kw={'height_ratios': [2, 1]})
