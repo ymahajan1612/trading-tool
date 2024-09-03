@@ -3,6 +3,11 @@ import streamlit as st
 class Page:
     def __init__(self):
         self.pages = []
+        st.set_page_config(
+            page_title="Stock Data Analysis",
+            page_icon="📈",
+            layout="wide"
+        )
     
     def add_page(self, title, func, **function_parameters):
         self.pages.append({

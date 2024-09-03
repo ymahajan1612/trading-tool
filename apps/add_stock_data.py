@@ -3,9 +3,9 @@ from Data import StockData
 import streamlit as st
 from DatabaseHandler import DBHandler
 import time
-st.set_page_config(page_title="Stock Trading Strategies Tool", page_icon="📈", layout="wide")
-
+# st.set_page_config(page_title="Stock Trading Strategies Tool", page_icon="📈", layout="wide")
 def app():
+
 
     strategy_mapping = {
         "Bollinger Band Strategy": BollingerBandStrategy,
