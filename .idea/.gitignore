@@ -9,4 +9,4 @@ stock_data_frame_test.csv
 config.py
 
 #Ignore cached stock data
-stock_data_cache
+stock_data_cache/
