@@ -3,9 +3,8 @@ from page import Page
 from apps import add_stock_data, view_stock_data
 from data.DatabaseHandler import DBHandler
 
-"""
-This is the main file for the stock trading tool. It creates a Streamlit page and adds the different pages to the page object
-"""
+
+
 page = Page()
 
 # Creating a database client and getting all the stock strategy instances from the database
@@ -16,9 +15,9 @@ stock_strategies = database_client.getAllStockStrategies()
 page.addPage("Add Stock Data", add_stock_data.app)
 
 for ticker, ticker_entry in stock_strategies.items():
-    """
-    For each stock ticker, add a section in the navigation bar to view the stock data
-    """
+
+    #For each stock ticker, add a section in the navigation bar to view the stock data
+
     for entry in ticker_entry:
         # Get the parameters for the stock strategy
         entry_params = entry[2]

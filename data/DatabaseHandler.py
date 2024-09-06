@@ -49,7 +49,6 @@ class DBHandler:
         Inserts a stock strategy into the database. If the strategy already exists, it will not be inserted.
         """
         ticker = strategy.getTicker()
-
         strategy_name = strategy.getName()
         try:
             cursor = self.conn.cursor()

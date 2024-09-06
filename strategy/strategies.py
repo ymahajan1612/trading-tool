@@ -11,7 +11,6 @@ class Strategy(ABC):
     def __init__(self,stock):
         self.stock = stock
         self.historical_data = copy.deepcopy(stock.getDataFrame())
-        self.name = None
         self.preprocessData()
     
     def getData(self):
@@ -40,10 +39,12 @@ class Strategy(ABC):
         """
         return self.historical_data['Close'].ewm(span=window, adjust=False).mean()
 
-    def getName(self):
-        raise self.name
     
     # Abstract methods
+    @abstractmethod
+    def getName(self):
+        raise NotImplementedError()
+    
     @abstractmethod
     def getDataAsDict(self):
         raise NotImplementedError()
@@ -75,7 +76,6 @@ class SMACrossOverStrategy(Strategy):
         super().__init__(stock)
         self.short_window = short_window
         self.long_window = long_window
-        self.name = "SMA Crossover Strategy"
 
     def preprocessData(self):
         self.historical_data['SMA_short'] = self.calculateSMA(self.short_window)
@@ -86,7 +86,10 @@ class SMACrossOverStrategy(Strategy):
         return {
             'SMA_short': self.getData()['SMA_short'].to_list(),
             'SMA_long': self.getData()['SMA_long'].to_list()
-        }        
+        }  
+
+    def getName(self):
+        return "SMA Crossover Strategy"      
 
     def getShortWindow(self):
         return self.short_window
@@ -164,7 +167,6 @@ class MACDStrategy(Strategy):
         self.signal_window = signal_window
         self.short_window = short_window
         self.long_window = long_window
-        self.name = "MACD Strategy"
         super().__init__(stock)
         
     def preprocessData(self):
@@ -174,6 +176,9 @@ class MACDStrategy(Strategy):
         self.historical_data['MACD_histogram'] = self.historical_data['MACD'] - self.historical_data['Signal_line']
 
         self.historical_data = self.historical_data.tail(400)
+
+    def getName(self):
+        return "MACD Strategy"
 
     def getDataAsDict(self):
         return {
@@ -264,6 +269,9 @@ class BollingerBandStrategy(Strategy):
         self.historical_data['RSI'] = RSI
         self.historical_data = self.historical_data.tail(500)
 
+    def getName(self):
+        return "Bollinger Band Strategy"
+    
     def getDataAsDict(self):
         return {
             'UB': self.getData()['UB'].to_list(),
