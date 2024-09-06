@@ -73,9 +73,9 @@ class Strategy(ABC):
 
 class SMACrossOverStrategy(Strategy):
     def __init__(self, stock, short_window, long_window):
-        super().__init__(stock)
         self.short_window = short_window
         self.long_window = long_window
+        super().__init__(stock)
 
     def preprocessData(self):
         self.historical_data['SMA_short'] = self.calculateSMA(self.short_window)

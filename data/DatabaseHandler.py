@@ -163,7 +163,6 @@ class DBHandler:
             """, (stock_strategy_id,))
 
             self.conn.commit()
-            print(f"Strategy successfully removed.")
         except sqlite3.Error as e:
             self.conn.rollback()
-            print(f"Error: {e} during removal of strategy")
+            
