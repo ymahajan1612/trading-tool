@@ -10,3 +10,6 @@ config/config.py
 
 #Ignore cached stock data
 data/stock_data_cache/
+
+# Ignore the database file
+data/trading_tool.db
