@@ -6,7 +6,7 @@
 stock_data_frame_test.csv
 
 # Ignore the config file containing sensitive information
-config.py
+config/config.py
 
 #Ignore cached stock data
-stock_data_cache/
+data/stock_data_cache/

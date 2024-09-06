@@ -5,14 +5,15 @@ import pandas as pd
 import copy
 
 class Strategy(ABC):
-    def __init__(self,stock, short_window=None, long_window=None):
+    """
+    Abstract class for a trading strategy that can be implemented by different strategies.
+    """
+    def __init__(self,stock):
         self.stock = stock
         self.historical_data = copy.deepcopy(stock.getDataFrame())
-        self.short_window = short_window
-        self.long_window = long_window
+        self.name = None
         self.preprocessData()
     
-
     def getData(self):
         return self.historical_data
     
@@ -26,20 +27,34 @@ class Strategy(ABC):
         
         return pd.Series(signals, index=self.historical_data.index[:])
 
-    @abstractmethod
-    def getName(self):
-        raise NotImplementedError()
+    def calculateSMA(self, window):
+        """
+        Calculates the Simple Moving Average over a given window
+        """
+        return self.historical_data['Close'].rolling(window=window).mean()
+    
+    def calculateEMA(self, window):
+        """
+        Calculates a weighted average,
+        by giving more weight to the recent points in a window
+        """
+        return self.historical_data['Close'].ewm(span=window, adjust=False).mean()
 
+    def getName(self):
+        raise self.name
+    
+    # Abstract methods
     @abstractmethod
     def getDataAsDict(self):
         raise NotImplementedError()
 
     @abstractmethod
     def preprocessData(self):
+        """
+        Method to calculate the necessary indicators for the strategy
+        """
         raise NotImplementedError()
     
-    def calculateSMA(self, window):
-        return self.historical_data['Close'].rolling(window=window).mean()
     
     @abstractmethod
     def generateSignal(self, current_index = -1):
@@ -57,7 +72,10 @@ class Strategy(ABC):
 
 class SMACrossOverStrategy(Strategy):
     def __init__(self, stock, short_window, long_window):
-        super().__init__(stock, short_window, long_window)
+        super().__init__(stock)
+        self.short_window = short_window
+        self.long_window = long_window
+        self.name = "SMA Crossover Strategy"
 
     def preprocessData(self):
         self.historical_data['SMA_short'] = self.calculateSMA(self.short_window)
@@ -73,16 +91,13 @@ class SMACrossOverStrategy(Strategy):
     def getShortWindow(self):
         return self.short_window
 
-    def getName(self):
-        return "SMA Crossover Strategy"
-
     def getLongWindow(self):
         return self.long_window
     
     def generateSignal(self, current_index = -1):
         """
-        Returns:
-        int: 1 for buy signal, -1 for sell signal, and 0 for hold.
+        In this strategy for a buy signal The short-term SMA must cross above the long-term SMA
+        For a sell signal the short-term SMA must cross below the long-term SMA
         """
         curr = self.historical_data.iloc[current_index]
         prev = self.historical_data.iloc[current_index-1]
@@ -100,9 +115,12 @@ class SMACrossOverStrategy(Strategy):
     
     def generatePlot(self, plot_window):
         stock_data_plot = self.historical_data.tail(plot_window).copy()
+        # Convert the date to a number to plot it
         stock_data_plot['Date'] = dates.date2num(stock_data_plot.index)
-        print(stock_data_plot)
+
+        
         fig, ax = plt.subplots(figsize=(14, 8))
+
         ax.plot(stock_data_plot['Date'], stock_data_plot['SMA_short'], label='{}-day SMA'.format(self.short_window), color='blue')
         ax.plot(stock_data_plot['Date'], stock_data_plot['SMA_long'], label='{}-day SMA'.format(self.long_window), color='purple')
 
@@ -113,20 +131,27 @@ class SMACrossOverStrategy(Strategy):
             elif self.generateSignal(current_index=idx) == -1:
                 ax.plot(row['Date'], row['Close'], marker='v', markersize=10, color='r')
             
- 
+        # Plot the candlestick chart
         for idx, row in stock_data_plot.iterrows():
             colour = 'g' if row['Close'] >= row['Open'] else 'r'
             lower = min(row['Open'], row['Close'])
             height = abs(row['Close'] - row['Open'])
+
+            # Creating a rectangle for the candlestick
             ax.add_patch(plt.Rectangle((row['Date'] - 0.3, lower), 0.6, height, color=colour))
+
+            # Indicating the high and low of the candlestick
             ax.plot([row['Date'], row['Date']], [row['Low'], lower], color='k')
             ax.plot([row['Date'], row['Date']], [row['High'], lower + height], color='k')
+        # Plot the closing price    
         plt.plot(stock_data_plot['Date'], stock_data_plot['Close'], label='Close Price', color='black', linestyle='-', linewidth=1)
 
         ax.set_xlabel('Date')
-        ax.xaxis_date()  # Convert the x-axis to date format
+
+        ax.xaxis_date() 
         ax.xaxis.set_major_formatter(dates.DateFormatter('%Y-%m-%d'))  # Format dates
         ax.set_ylabel('Price')
+
         ax.set_title('SMA Crossover Strategy for {}'.format(self.stock.getTicker()))
         ax.legend()
         plt.xticks(rotation=45)
@@ -137,7 +162,10 @@ class SMACrossOverStrategy(Strategy):
 class MACDStrategy(Strategy):
     def __init__(self, stock, short_window=12, long_window=26, signal_window=9):
         self.signal_window = signal_window
-        super().__init__(stock, short_window, long_window)
+        self.short_window = short_window
+        self.long_window = long_window
+        self.name = "MACD Strategy"
+        super().__init__(stock)
         
     def preprocessData(self):
         self.historical_data['EMA_200'] = self.calculateEMA(200) 
@@ -153,18 +181,16 @@ class MACDStrategy(Strategy):
             'Signal_line': self.getData()['Signal_line'].to_list(),
             'MACD_histogram': self.getData()['MACD_histogram'].to_list()
         }
-    
-    def getName(self):
-        return "MACD Strategy"
-
-    def calculateEMA(self, window):
-        """
-        Calculates a weighted average,
-        by giving more weight to the recent points in a window
-        """
-        return self.historical_data['Close'].ewm(span=window, adjust=False).mean()
 
     def generateSignal(self, current_index = -1):
+        """
+        In this strategy for a buy signal:
+        1. The MACD must cross above the Signal Line
+        2. The current closing price is above the 200-day EMA
+        For a sell signal:
+        1. The MACD must cross below the Signal Line
+        2. The current closing price is below the 200-day EMA
+        """
         curr = self.historical_data.iloc[current_index]
         prev = self.historical_data.iloc[current_index-1]
 
@@ -210,9 +236,10 @@ class BollingerBandStrategy(Strategy):
         self.RSI_threshold_high = 70
         self.RSI_threshold_low = 30
         self.band_width_threshold = 0.15
-        super().__init__(stock,None,None)
+        super().__init__(stock)
     
     def preprocessData(self):
+
         self.historical_data['SMA'] = self.calculateSMA(self.window)
         self.historical_data['SD'] = self.historical_data['Close'].rolling(window=self.window).std()
 
@@ -249,8 +276,6 @@ class BollingerBandStrategy(Strategy):
         In this strategy for a buy signal: 
         1. The prevous candle must close below the bollinger band
         2. The RSI value for the previous day must be below the threshold (30)
-        3. The bollinger band width is greater than the threshold to avoid trading low volatility periods
-        4. Current closes above previous high
         vice verse for a sell signal.
         """
         curr = self.historical_data.iloc[current_index]
@@ -260,15 +285,12 @@ class BollingerBandStrategy(Strategy):
         prev_close_below_band = prev['Close'] < prev['LB']
         # 2
         prev_rsi_below_threshold = prev['RSI'] < self.RSI_threshold_low
-        # 3
-        band_width_above_threshold = True 
-        #curr['Band_width'] > self.band_width_threshold
+
 
 
         # Generate a buy signal
         if (prev_close_below_band and 
-            prev_rsi_below_threshold and
-            band_width_above_threshold):
+            prev_rsi_below_threshold):
             return 1
 
 
@@ -279,14 +301,11 @@ class BollingerBandStrategy(Strategy):
 
         # Generate a sell signal
         if (prev_close_above_band and 
-            prev_rsi_above_threshold and
-            band_width_above_threshold):
+            prev_rsi_above_threshold):
             return -1 
     
         return 0 
-    
-    def getName(self):
-        return "Bollinger Band Strategy"
+
 
     def generatePlot(self,plot_window):
         stock_data_plot = self.historical_data.tail(plot_window).copy()

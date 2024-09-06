@@ -1,4 +1,4 @@
-import config
+import config.config as config
 import requests
 import pandas as pd
 import os
@@ -6,25 +6,28 @@ import pickle as pkl
 pd.set_option('display.max_columns', None)
 
 class StockData:
-    CACHE_DIR = "stock_data_cache"
+    """
+    This class is used to fetch and store stock data for a given ticker symbol
+    """
+    # Directory to store the stock data cache
+    CACHE_DIR = "data/stock_data_cache"
+
     def __init__(self, ticker):
         self.ticker = ticker
-        self.testing = False
-        if self.testing:
-            self.error = None 
-            self.data = pd.read_csv('stock_dataframe_test.csv',index_col=0)
-            self.data.index = pd.to_datetime(self.data.index)
-        else:
-            cached_data = self.loadDataFromCache()
-            if cached_data is not None:
-                self.fetch_time, self.data = cached_data
-                self.error = None
+        # Fetch the stock data
+        # Check if the data is stored in cache and is up to date
+        cached_data = self.loadDataFromCache()
+        if cached_data is not None:
+            self.fetch_time, self.data = cached_data
+            self.error = None   
 
-            else:
-                self.data, self.error  = self.fetchData()
-                if self.error is None:
-                    self.saveDataToCache()
-                    self.fetch_time = pd.Timestamp.now().date()
+        # If the data is not in cache or is outdated, fetch the data from the API
+        else:
+            self.data, self.error  = self.fetchData()
+            if self.error is None:
+                # Save the data to cache
+                self.saveDataToCache()
+                self.fetch_time = pd.Timestamp.now().date()
     
     def getTicker(self):
         return self.ticker
@@ -34,7 +37,7 @@ class StockData:
     
     def loadDataFromCache(self):
         """
-        Check if data for a stock is stored in cache and is up to date (less than 24 hrs old)
+        Check if data for a stock is stored in cache and is up to date 
         and return the data if it exist and is up to date
         """
         file_path = "{directory}/{symbol}.pkl".format(directory=self.CACHE_DIR,symbol = self.getTicker())
@@ -65,6 +68,7 @@ class StockData:
             r.raise_for_status()
             data = r.json()
 
+            # Checks for errors in fetching the data and returns an error message
             if "Time Series (Daily)" not in data:
                 error_message = f"Error: Unable to retrieve data for {self.getTicker()}. Please check if the ticker symbol is correct."
                 return None, error_message
@@ -77,6 +81,7 @@ class StockData:
             stock_dataframe = stock_dataframe.sort_index()  # Sort the DataFrame by date
             stock_dataframe.index.name = "Date"
 
+            #  Return the stock data and no error message if the data is successfully fetched
             return stock_dataframe, None
         
         except requests.exceptions.HTTPError as e:

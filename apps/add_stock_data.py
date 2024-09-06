@@ -1,35 +1,35 @@
-from strategy.Strategy import BollingerBandStrategy, SMACrossOverStrategy, MACDStrategy
-from Data import StockData
+from data.Data import StockData
+from strategy.factory import StrategyFactory
 import streamlit as st
-from DatabaseHandler import DBHandler
+from data.DatabaseHandler import DBHandler
 import time
-# st.set_page_config(page_title="Stock Trading Strategies Tool", page_icon="📈", layout="wide")
+
 def app():
+    """
+    The main function for the Add Stock Data page. This page allows users to add stock and strategy to track
+    """
 
-
-    strategy_mapping = {
-        "Bollinger Band Strategy": BollingerBandStrategy,
-        "SMA Crossover Strategy": SMACrossOverStrategy,
-        "MACD Strategy": MACDStrategy
-    }
-
-    def addStockToDatabase(stock_ticker, strategy_str, strategy_params):
-        stock = StockData(stock_ticker)
-        error = stock.getError()
-        if error:
-            st.error(error,icon="🚨")
+    def addStockToDatabase(strategy, strategy_str, strategy_params):
+        """
+        Adds a stock and strategy to the database given the stock ticker, strategy string, and strategy parameters
+        """
+        # Getting the stock data and checking for errors, displaying an error message if there is one
+        stock_ticker = strategy.getTicker()
+        # Creating a database client and inserting the strategy, displaying an error message if there is one during insertion
+        database_client = DBHandler()
+        error = database_client.insertStrategy(strategy, strategy_params)
+        if not error:
+            st.success(f"{strategy_str} for {stock_ticker} successfully added!",icon="🚀")
+            time.sleep(2)
+            st.rerun()
         else:
-            strategy = strategy_mapping[strategy_str](stock, **strategy_params)
-            database_client = DBHandler()
-            error = database_client.insertStrategy(strategy, strategy_params)
-            if not error:
-                st.success(f"{strategy_str} for {stock_ticker} successfully added!",icon="🚀")
-                time.sleep(2)
-                st.rerun()
-            else:
-                st.error(error,icon="🚨")
+            st.error(error,icon="🚨")
 
+    # This dictionary will store the parameters for the selected strategy
     strategy_params = dict()
+
+    # Creating a strategy factory
+    factory = StrategyFactory()
 
     st.markdown("<h1 style='text-align: center;'>Stock Trading Strategies Tool 📈</h1>", unsafe_allow_html=True)
 
@@ -37,7 +37,7 @@ def app():
     stock_ticker = st.text_input(label = "Stock Ticker",value="AAPL",label_visibility="collapsed").upper()
 
     st.markdown("<h2 style='text-align: left;'>Select a Trading Strategy</h2>", unsafe_allow_html=True)
-    strategy_str = st.selectbox("Select Strategy", ["Bollinger Band Strategy", "SMA Crossover Strategy", "MACD Strategy"],label_visibility="collapsed")
+    strategy_str = st.selectbox("Select Strategy", factory.getStrategyNames(),label_visibility="collapsed")
 
     st.markdown("<h2 style='text-align: left;'>Select the Parameters for the Trading Strategy</h2>", unsafe_allow_html=True)
 
@@ -58,7 +58,14 @@ def app():
     save_button = st.button("Add Data", disabled=not enabled)
 
     if save_button:
-        addStockToDatabase(stock_ticker, strategy_str, strategy_params)
+        # Creating a stock with the given stock ticker, checking for errors
+        stock = StockData(stock_ticker)
+        if stock.getError():
+            st.error(stock.getError(), icon="🚨")
+        else:    
+            # Creating a strategy with the given strategy string and parameters, and adding the stock to the database
+            strategy = factory.createStrategy(strategy_str, stock, **strategy_params)
+            addStockToDatabase(strategy, strategy_str, strategy_params)
 
 
 

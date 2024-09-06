@@ -1,8 +1,12 @@
 import sqlite3
 import json
-import datetime
 
 class DBHandler:
+    """
+    This class is responsible for handling the database operations for the stock trading tool. 
+    It creates a connection to the database and creates the necessary tables.
+    The class provides methods to insert, retrieve, and remove stock strategies from the database.
+    """
     def __init__(self):
         self.conn = None
         self.createConnection()
@@ -10,7 +14,7 @@ class DBHandler:
 
     def createConnection(self):
         try:
-            self.conn = sqlite3.connect('trading_tool.db')
+            self.conn = sqlite3.connect('data/trading_tool.db')
         except sqlite3.Error as e:
             print("Error establishing connection: ", e)
 
@@ -21,7 +25,7 @@ class DBHandler:
     
     def createTables(self):
         """
-        Creates:
+        Creates Table:
         - stock_strategy: stores the stock ticker alongside the strategy name, and strategy parameters
         """
         try:
@@ -61,6 +65,7 @@ class DBHandler:
             # Get the stock_strategy_id
             stock_strategy_id = cursor.lastrowid
 
+            # If the strategy already exists, return an error message
             if stock_strategy_id == 0:
                 return f"Failed to insert strategy {strategy_name} for {ticker}. This strategy might already exist with the given parameters."
             
@@ -87,6 +92,7 @@ class DBHandler:
             """, (ticker, strategy_name, serialized_params))
             result = cursor.fetchone()
             return result[0] if result else None
+        
         except sqlite3.Error as e:
             print("Error retrieving stock strategy ID: ", e)
             return None
@@ -146,7 +152,7 @@ class DBHandler:
 
     def removeStockStrategy(self, stock_strategy_id):
         """
-        Given a unique ticker, strategy, and strategy_params combination, removes the stock strategy from the database.
+        Given a stock-strategy id, removes the stock strategy from the database.
         """
         try:
 

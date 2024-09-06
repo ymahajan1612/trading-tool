@@ -1,8 +1,5 @@
 import vectorbt as vbt
-from Data import StockData
-from strategy.Strategy import *
-
-stock = StockData('AMZN')
+from strategy.strategies import *
 
 class Backtester():
     def __init__(self, strategy):
@@ -12,6 +9,9 @@ class Backtester():
 
     
     def generateEntryExit(self):
+        """
+        Generate the entry and exit signals for the strategy
+        """
         signals = self.strategy.generateSignalSeries()
 
         entry = signals == 1
@@ -20,6 +20,9 @@ class Backtester():
         return entry, exit
     
     def run(self, initial_cash, percentage_commission):
+        """
+        Run the backtest using the strategy
+        """
         commission = percentage_commission / 100
         portfolio = vbt.Portfolio.from_signals(self.data['Close'], self.entries, self.exits, init_cash=initial_cash, fees=commission)
         return portfolio
