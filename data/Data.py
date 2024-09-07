@@ -12,8 +12,9 @@ class StockData:
     # Directory to store the stock data cache
     CACHE_DIR = "data/stock_data_cache"
 
-    def __init__(self, ticker):
+    def __init__(self, ticker, num_days=1500):
         self.ticker = ticker
+        self.num_days = num_days
         # Fetch the stock data
         # Check if the data is stored in cache and is up to date
         cached_data = self.loadDataFromCache()
@@ -80,6 +81,9 @@ class StockData:
             stock_dataframe.index = pd.to_datetime(stock_dataframe.index)  # Convert index to datetime
             stock_dataframe = stock_dataframe.sort_index()  # Sort the DataFrame by date
             stock_dataframe.index.name = "Date"
+
+            # Filter the data to the last num_days
+            stock_dataframe = stock_dataframe.iloc[-self.num_days:]
 
             #  Return the stock data and no error message if the data is successfully fetched
             return stock_dataframe, None
