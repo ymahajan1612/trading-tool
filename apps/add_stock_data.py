@@ -2,6 +2,7 @@ from data.Data import StockData
 from strategy.factory import StrategyFactory
 import streamlit as st
 from data.DatabaseHandler import DBHandler
+from backtest.optimisation import WalkForwardOptimisation
 import time
 
 def app():
@@ -38,6 +39,18 @@ def app():
 
     st.markdown("<h2 style='text-align: left;'>Select a Trading Strategy</h2>", unsafe_allow_html=True)
     strategy_str = st.selectbox("Select Strategy", factory.getStrategyNames(),label_visibility="collapsed")
+
+    optimise_button = st.button("Optimise Parameters", disabled=not stock_ticker)
+
+    if optimise_button:
+        stock = StockData(stock_ticker)
+        if stock.getError():
+            st.error(stock.getError(), icon="🚨")
+        else:
+            with st.spinner("Optimising Parameters..."):
+                optimiser = WalkForwardOptimisation(strategy_str, stock)
+                all_portfolios, performance_parameter_map = optimiser.run(0.7, 0.3)
+            # st.success(f"Optimisation Complete! Best Parameters for {strategy_str}: {best_params} with return: {best_performance:.2f}",icon="🚀")
 
     st.markdown("<h2 style='text-align: left;'>Select the Parameters for the Trading Strategy</h2>", unsafe_allow_html=True)
 

@@ -2,13 +2,14 @@ from strategy.strategies import *
 from strategy.factory import StrategyFactory
 from backtest.Backtest import Backtester
 import numpy as np
+from itertools import product
 
 class WalkForwardOptimisation:
-    def __init__(self, strategy_str, parameter_grid, initial_cash, percentage_commission, stock):
+    def __init__(self, strategy_str,stock):
         self.strategy_str = strategy_str
-        self.parameter_grid = parameter_grid
-        self.initial_cash = initial_cash
-        self.percentage_commission = percentage_commission
+        self.parameter_grid = self.createParameterGrid()
+        self.initial_cash = 10000
+        self.percentage_commission = 2
         self.strategy_factory = StrategyFactory()
         self.stock = stock
 
@@ -41,25 +42,43 @@ class WalkForwardOptimisation:
         portfolio = bt.run(self.initial_cash, self.percentage_commission, start_data=out_sample_start, end_data=out_sample_end)
         return portfolio
     
-    def walkForwardOptimisation(self, in_sample_window, out_sample_window):
+    def createParameterGrid(self):
+        if self.strategy_str == "SMA Crossover Strategy":
+            short_window = np.arange(1, 50, 1)
+            long_window = np.arange(1, 200, 1)
+            return [{"short_window": short, "long_window": long} for short, long in product(short_window, long_window) if short < long]
+        elif self.strategy_str == "MACD Strategy":
+            ema_short_window = np.arange(1, 50, 1)
+            ema_long_window = np.arange(1, 200, 1)
+            signal_window = np.arange(1, 50, 1)
+            return [{"short_window": short, "long_window": long, "signal_window": signal} for short, long, signal in product(ema_short_window, ema_long_window, signal_window) if short < long]
+        elif self.strategy_str == "Bollinger Band Strategy":
+            window = np.arange(1, 50, 1)
+            standard_deviations = np.arange(1, 5, 1)
+            return [{"window": window, "standard_deviations": std} for window, std in product(window, standard_deviations)]
+
+    def run(self, in_sample_percentage, out_sample_percentage):
         """
         Perform walk forward optimisation
         """
 
         all_portfolios = []
-        param_performance_map = {}
+        performance_parameter_map = {}
 
         total_data_size = len(self.stock.getDataFrame())
+        in_sample_window = int(in_sample_percentage * total_data_size)
+        out_sample_window = int(out_sample_percentage * total_data_size)
 
-        for i in range(0, total_data_size - (in_sample_window + out_sample_window)):
+        for i in range(0, total_data_size - (in_sample_window + out_sample_window), out_sample_window):
             in_sample_start = i
             in_sample_end = i + in_sample_window
             out_sample_start = in_sample_end
-            out_sample_end = in_sample_end + out_sample_window
+            out_sample_end = min(in_sample_end + out_sample_window, total_data_size)
 
             best_params, best_performance = self.optimiseParametersInSample(in_sample_start, in_sample_end)
+            print(best_params, best_performance)
             portfolio = self.ApplyParametersOutOfSample(best_params, out_sample_start, out_sample_end)
             all_portfolios.append(portfolio)
-            param_performance_map[best_performance] = best_params
+            performance_parameter_map[best_performance] = best_params
 
-        return all_portfolios, param_performance_map
+        return all_portfolios, performance_parameter_map
