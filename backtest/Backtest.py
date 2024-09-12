@@ -26,18 +26,22 @@ class Backtester():
         """
         Run the backtest using the strategy
         """
+        if start_data:
+            start_date = self.data.index[start_data]
+        if end_data:
+            end_date = self.data.index[end_data]
         if start_data and end_data:
-            data = self.data.loc[start_data:end_data]
-            entries = self.entries.loc[start_data:end_data]
-            exits = self.exits.loc[start_data:end_data]
+            data = self.data.loc[start_date:end_date]
+            entries = self.entries.loc[start_date:end_date]
+            exits = self.exits.loc[start_date:end_date]
         elif start_data:
-            data = self.data.loc[start_data:]
-            entries = self.entries.loc[start_data:]
-            exits = self.exits.loc[start_data:] 
+            data = self.data.loc[start_date:]
+            entries = self.entries.loc[start_date:]
+            exits = self.exits.loc[start_date:] 
         elif end_data:
-            data = self.data.loc[:end_data]
-            entries = self.entries.loc[:end_data]
-            exits = self.exits.loc[:end_data]
+            data = self.data.loc[:end_date]
+            entries = self.entries.loc[:end_date]
+            exits = self.exits.loc[:end_date]
         else:
             data = self.data
             entries = self.entries

@@ -10,6 +10,7 @@ class Strategy(ABC):
     """
     def __init__(self,stock):
         self.stock = stock
+        self.num_days = 1500
         self.historical_data = copy.deepcopy(stock.getDataFrame())
         self.preprocessData()
     
@@ -18,6 +19,9 @@ class Strategy(ABC):
     
     def getTicker(self):
         return self.stock.getTicker()
+
+    def getDataSize(self):
+        return self.num_days
 
     def generateSignalSeries(self):
         signals = [0]
@@ -80,7 +84,7 @@ class SMACrossOverStrategy(Strategy):
     def preprocessData(self):
         self.historical_data['SMA_short'] = self.calculateSMA(self.short_window)
         self.historical_data['SMA_long'] = self.calculateSMA(self.long_window)
-        self.historical_data = self.historical_data.tail(200)
+        self.historical_data = self.historical_data.tail(self.num_days)
 
     def getDataAsDict(self):
         return {
@@ -175,7 +179,7 @@ class MACDStrategy(Strategy):
         self.historical_data['Signal_line'] = self.historical_data['MACD'].ewm(span=self.signal_window, adjust=False).mean()
         self.historical_data['MACD_histogram'] = self.historical_data['MACD'] - self.historical_data['Signal_line']
 
-        self.historical_data = self.historical_data.tail(400)
+        self.historical_data = self.historical_data.tail(self.num_days)
 
     def getName(self):
         return "MACD Strategy"
@@ -267,7 +271,7 @@ class BollingerBandStrategy(Strategy):
         relative_strength = average_gain/average_loss
         RSI = 100.0 - (100.0/(1.0 + relative_strength))
         self.historical_data['RSI'] = RSI
-        self.historical_data = self.historical_data.tail(500)
+        self.historical_data = self.historical_data.tail(self.num_days)
 
     def getName(self):
         return "Bollinger Band Strategy"

@@ -13,6 +13,7 @@ class WalkForwardOptimisation:
         self.strategy_factory = StrategyFactory()
         self.stock = stock
 
+
     def optimiseParametersInSample(self, in_sample_start=None, in_sample_end=None):
         """
         Find the optimal parameters for the strategy in the range specified
@@ -30,7 +31,6 @@ class WalkForwardOptimisation:
             if performance > best_performance:
                 best_performance = performance
                 best_params = params
-
         return best_params, best_performance
     
     def ApplyParametersOutOfSample(self, best_params, out_sample_start=None, out_sample_end=None):
@@ -44,13 +44,13 @@ class WalkForwardOptimisation:
     
     def createParameterGrid(self):
         if self.strategy_str == "SMA Crossover Strategy":
-            short_window = np.arange(1, 50, 1)
-            long_window = np.arange(1, 200, 1)
+            short_window = np.arange(1, 50, 5)
+            long_window = np.arange(1, 200, 5)
             return [{"short_window": short, "long_window": long} for short, long in product(short_window, long_window) if short < long]
         elif self.strategy_str == "MACD Strategy":
-            ema_short_window = np.arange(1, 50, 1)
-            ema_long_window = np.arange(1, 200, 1)
-            signal_window = np.arange(1, 50, 1)
+            ema_short_window = np.arange(1, 50, 5)
+            ema_long_window = np.arange(1, 200, 5)
+            signal_window = np.arange(1, 50, 5)
             return [{"short_window": short, "long_window": long, "signal_window": signal} for short, long, signal in product(ema_short_window, ema_long_window, signal_window) if short < long]
         elif self.strategy_str == "Bollinger Band Strategy":
             window = np.arange(1, 50, 1)
@@ -65,20 +65,27 @@ class WalkForwardOptimisation:
         all_portfolios = []
         performance_parameter_map = {}
 
-        total_data_size = len(self.stock.getDataFrame())
-        in_sample_window = int(in_sample_percentage * total_data_size)
-        out_sample_window = int(out_sample_percentage * total_data_size)
+        total_data_size = self.strategy_factory.createStrategy(self.strategy_str, self.stock, **self.parameter_grid[0]).getDataSize()
+        half_window = int(total_data_size / 2)
 
-        for i in range(0, total_data_size - (in_sample_window + out_sample_window), out_sample_window):
+        in_sample_window = int(half_window * in_sample_percentage)
+        out_sample_window = int(half_window * out_sample_percentage)
+        step_size = int(out_sample_window / 2)
+
+        i = 0
+
+        while i + in_sample_window + out_sample_window <= total_data_size:
             in_sample_start = i
             in_sample_end = i + in_sample_window
             out_sample_start = in_sample_end
-            out_sample_end = min(in_sample_end + out_sample_window, total_data_size)
-
+            out_sample_end = min(out_sample_start + out_sample_window, total_data_size)  
             best_params, best_performance = self.optimiseParametersInSample(in_sample_start, in_sample_end)
-            print(best_params, best_performance)
-            portfolio = self.ApplyParametersOutOfSample(best_params, out_sample_start, out_sample_end)
-            all_portfolios.append(portfolio)
             performance_parameter_map[best_performance] = best_params
 
+            portfolio = self.ApplyParametersOutOfSample(best_params, out_sample_start, out_sample_end)
+            all_portfolios.append(portfolio)
+
+            i += step_size
         return all_portfolios, performance_parameter_map
+    
+

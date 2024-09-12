@@ -3,6 +3,7 @@ from strategy.factory import StrategyFactory
 import streamlit as st
 from data.DatabaseHandler import DBHandler
 from backtest.optimisation import WalkForwardOptimisation
+import math
 import time
 
 def app():
@@ -40,30 +41,52 @@ def app():
     st.markdown("<h2 style='text-align: left;'>Select a Trading Strategy</h2>", unsafe_allow_html=True)
     strategy_str = st.selectbox("Select Strategy", factory.getStrategyNames(),label_visibility="collapsed")
 
+    optimise = False
     optimise_button = st.button("Optimise Parameters", disabled=not stock_ticker)
-
     if optimise_button:
         stock = StockData(stock_ticker)
         if stock.getError():
             st.error(stock.getError(), icon="🚨")
         else:
+            optimise = True
             with st.spinner("Optimising Parameters..."):
                 optimiser = WalkForwardOptimisation(strategy_str, stock)
                 all_portfolios, performance_parameter_map = optimiser.run(0.7, 0.3)
-            # st.success(f"Optimisation Complete! Best Parameters for {strategy_str}: {best_params} with return: {best_performance:.2f}",icon="🚀")
+                # get the parameters with the best performance
+                best_performance = max(list(performance_parameter_map.keys()))
+                best_params = performance_parameter_map[best_performance]
+
+            st.success(f"Optimisation Complete! Best {strategy_str} Parameters for {stock_ticker}: {best_params} with return: {round(best_performance,3) * 100}%",icon="🚀")
 
     st.markdown("<h2 style='text-align: left;'>Select the Parameters for the Trading Strategy</h2>", unsafe_allow_html=True)
 
     if strategy_str == "SMA Crossover Strategy":
-        strategy_params["short_window"] = st.slider("SMA Short Window", min_value=1, max_value=50, value=10, step=1)
-        strategy_params["long_window"] = st.slider("SMA Long Window", min_value=1, max_value=200, value=50, step=1)
+        short_window_value = 10
+        long_window_value = 50
+        if optimise:
+            short_window_value = best_params["short_window"]
+            long_window_value = best_params["long_window"]
+        strategy_params["short_window"] = st.slider("SMA Short Window", min_value=1, max_value=50, value=short_window_value, step=1)
+        strategy_params["long_window"] = st.slider("SMA Long Window", min_value=1, max_value=200, value=long_window_value, step=1)
     elif strategy_str == "MACD Strategy":
-        strategy_params["short_window"] = st.slider("EMA Short Window (Default: 12)", min_value=1, max_value=50, value=12, step=1)
-        strategy_params["long_window"] = st.slider("EMA Long Window (Default: 26) ", min_value=1, max_value=200, value=26, step=1)
-        strategy_params["signal_window"] = st.slider("Signal Window (Default: 9)", min_value=1, max_value=50, value=9, step=1)
+        short_window_value = 12
+        long_window_value = 26
+        signal_window_value = 9
+        if optimise:
+            short_window_value = best_params["short_window"]
+            long_window_value = best_params["long_window"]
+            signal_window_value = best_params["signal_window"]
+        strategy_params["short_window"] = st.slider("EMA Short Window (Default: 12)", min_value=1, max_value=50, value=short_window_value, step=1)
+        strategy_params["long_window"] = st.slider("EMA Long Window (Default: 26) ", min_value=1, max_value=200, value=long_window_value, step=1)
+        strategy_params["signal_window"] = st.slider("Signal Window (Default: 9)", min_value=1, max_value=50, value=signal_window_value, step=1)
     elif strategy_str == "Bollinger Band Strategy":
-        strategy_params["window"] = st.slider("Bollinger Band Window", min_value=1, max_value=50, value=20, step=1)
-        strategy_params["standard_deviations"] = st.slider("Number of Standard Deviations", min_value=1, max_value=5, value=2, step=1)
+        window_value = 20
+        standard_deviations_value = 2
+        if optimise:
+            window_value = best_params["window"]
+            standard_deviations_value = best_params["standard_deviations"]
+        strategy_params["window"] = st.slider("Bollinger Band Window", min_value=1, max_value=50, value=window_value, step=1)
+        strategy_params["standard_deviations"] = st.slider("Number of Standard Deviations", min_value=1, max_value=5, value=standard_deviations_value, step=1)
 
 
     enabled = True if stock_ticker and strategy_str else False
