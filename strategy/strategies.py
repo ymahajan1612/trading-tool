@@ -73,6 +73,7 @@ class Strategy(ABC):
     @abstractmethod
     def generatePlot(self):
         raise NotImplementedError()
+        
     
 
 class SMACrossOverStrategy(Strategy):

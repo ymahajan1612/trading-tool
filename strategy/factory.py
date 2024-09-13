@@ -24,3 +24,4 @@ class StrategyFactory:
         Returns a list of the strategy names available in the factory.
         """
         return list(self._strategy_map.keys())
+    
