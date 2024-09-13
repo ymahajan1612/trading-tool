@@ -31,8 +31,7 @@ def app(stock_strategy_id):
         # slider for the user to adjust the plot window
         days_to_plot = st.slider("Adjust Plot Window", min_value=10, max_value=120, value=100, step=1)
         plot = strategy.generatePlot(days_to_plot)
-        st.pyplot(plot)
-
+        st.plotly_chart(plot, use_container_width=True)
         if delete_button:
             database_client.removeStockStrategy(stock_strategy_id=stock_strategy_id)
             st.rerun()

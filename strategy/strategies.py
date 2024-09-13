@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-import matplotlib.pyplot as plt
-import matplotlib.dates as dates
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import pandas as pd
 import copy
 
@@ -42,7 +42,6 @@ class Strategy(ABC):
         by giving more weight to the recent points in a window
         """
         return self.historical_data['Close'].ewm(span=window, adjust=False).mean()
-
     
     # Abstract methods
     @abstractmethod
@@ -123,47 +122,42 @@ class SMACrossOverStrategy(Strategy):
     
     def generatePlot(self, plot_window):
         stock_data_plot = self.historical_data.tail(plot_window).copy()
-        # Convert the date to a number to plot it
-        stock_data_plot['Date'] = dates.date2num(stock_data_plot.index)
-
         
-        fig, ax = plt.subplots(figsize=(14, 8))
+        fig = go.Figure()
 
-        ax.plot(stock_data_plot['Date'], stock_data_plot['SMA_short'], label='{}-day SMA'.format(self.short_window), color='blue')
-        ax.plot(stock_data_plot['Date'], stock_data_plot['SMA_long'], label='{}-day SMA'.format(self.long_window), color='purple')
+        fig.add_trace(go.Candlestick(
+            x=stock_data_plot.index,
+            open=stock_data_plot['Open'],
+            high=stock_data_plot['High'],
+            low=stock_data_plot['Low'],
+            close=stock_data_plot['Close'],
+            name='Candlesticks'
+        ))
 
-        for idx in range(len(stock_data_plot)):
-            row = stock_data_plot.iloc[idx]
-            if self.generateSignal(current_index=idx) == 1:
-                ax.plot(row['Date'], row['Close'], marker='^', markersize=10, color='g')
-            elif self.generateSignal(current_index=idx) == -1:
-                ax.plot(row['Date'], row['Close'], marker='v', markersize=10, color='r')
-            
-        # Plot the candlestick chart
-        for idx, row in stock_data_plot.iterrows():
-            colour = 'g' if row['Close'] >= row['Open'] else 'r'
-            lower = min(row['Open'], row['Close'])
-            height = abs(row['Close'] - row['Open'])
+         # Plot short SMA
+        fig.add_trace(go.Scatter(
+            x=stock_data_plot.index,
+            y=stock_data_plot['SMA_short'],
+            mode='lines',
+            name=f'{self.short_window}-day SMA',
+            line=dict(color='yellow')))
 
-            # Creating a rectangle for the candlestick
-            ax.add_patch(plt.Rectangle((row['Date'] - 0.3, lower), 0.6, height, color=colour))
+        # Plot long SMA
+        fig.add_trace(go.Scatter(
+            x=stock_data_plot.index,
+            y=stock_data_plot['SMA_long'],
+            mode='lines',
+            name=f'{self.long_window}-day SMA',
+            line=dict(color='green')))
 
-            # Indicating the high and low of the candlestick
-            ax.plot([row['Date'], row['Date']], [row['Low'], lower], color='k')
-            ax.plot([row['Date'], row['Date']], [row['High'], lower + height], color='k')
-        # Plot the closing price    
-        plt.plot(stock_data_plot['Date'], stock_data_plot['Close'], label='Close Price', color='black', linestyle='-', linewidth=1)
+        fig.update_layout(
+            title=f'SMA Crossover Strategy for {self.stock.getTicker()}',
+            xaxis_title='Date',
+            yaxis_title='Price',
+            xaxis_rangeslider_visible=False)
 
-        ax.set_xlabel('Date')
-
-        ax.xaxis_date() 
-        ax.xaxis.set_major_formatter(dates.DateFormatter('%Y-%m-%d'))  # Format dates
-        ax.set_ylabel('Price')
-
-        ax.set_title('SMA Crossover Strategy for {}'.format(self.stock.getTicker()))
-        ax.legend()
-        plt.xticks(rotation=45)
         return fig
+
 
 
 
@@ -218,25 +212,54 @@ class MACDStrategy(Strategy):
 
     def generatePlot(self, plot_window):
         stock_data_plot = self.historical_data.tail(plot_window).copy()
-        stock_data_plot['Date'] = dates.date2num(stock_data_plot.index)
-
-        fig, ax = plt.subplots(figsize=(14, 8))
-        ax.plot(stock_data_plot['Date'], stock_data_plot['MACD'], label='MACD', color='blue')
-        ax.plot(stock_data_plot['Date'], stock_data_plot['Signal_line'], label='Signal Line', color='orange')
         
-        for idx, row in stock_data_plot.iterrows():
-            colour = 'g' if row['MACD_histogram'] > 0 else 'r'
-            ax.bar(row['Date'], row['MACD_histogram'], color=colour, width=1)
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.75, 0.25], subplot_titles=('Stock Price', 'MACD'), vertical_spacing=0.1)
 
-        ax.axhline(y=0, color='black', linewidth=1, linestyle="-")
-        ax.xaxis_date()  # Convert the x-axis to date format
-        ax.xaxis.set_major_formatter(dates.DateFormatter('%Y-%m-%d'))  # Format dates
-        ax.set_xlabel('Date')
-        ax.set_ylabel('MACD Value')
-        ax.set_title('MACD Strategy for {}'.format(self.stock.getTicker()))
-        ax.legend()
-        plt.xticks(rotation=45)
+
+        # Plot candlestick chart
+        fig.add_trace(go.Candlestick(
+            x=stock_data_plot.index,
+            open=stock_data_plot['Open'],
+            high=stock_data_plot['High'],
+            low=stock_data_plot['Low'],
+            close=stock_data_plot['Close'],
+            name='Candlestick'), row=1, col=1)
+
+        # Plot MACD line
+        fig.add_trace(go.Scatter(
+            x=stock_data_plot.index,
+            y=stock_data_plot['MACD'],
+            mode='lines',
+            name='MACD',
+            line=dict(color='blue')), row=2, col=1)
+
+        # Plot Signal line
+        fig.add_trace(go.Scatter(
+            x=stock_data_plot.index,
+            y=stock_data_plot['Signal_line'],
+            mode='lines',
+            name='Signal Line',
+            line=dict(color='orange')), row=2, col=1)
+
+        # Plot MACD Histogram 
+        fig.add_trace(go.Bar(
+            x=stock_data_plot.index,
+            y=stock_data_plot['MACD_histogram'],
+            name='MACD Histogram',
+            marker_color=stock_data_plot['MACD_histogram'].apply(lambda x: 'green' if x > 0 else 'red')), row=2, col=1)
+
+        # Update layout
+        fig.update_layout(
+            height =900,
+            xaxis_title='Date',
+            yaxis_title='Price',
+            xaxis2_title='Date', 
+            yaxis2_title='MACD',   
+            xaxis_rangeslider_visible=False)
+
+
         return fig
+
 
 
 class BollingerBandStrategy(Strategy):
@@ -322,36 +345,58 @@ class BollingerBandStrategy(Strategy):
 
     def generatePlot(self,plot_window):
         stock_data_plot = self.historical_data.tail(plot_window).copy()
-        stock_data_plot['Date'] = dates.date2num(stock_data_plot.index)
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.75, 0.25], subplot_titles=('Bollinger Bands', 'RSI'), vertical_spacing=0.1)
 
-        fig, (ax, ax2) = plt.subplots(2, 1, figsize=(28, 16), sharex=True, gridspec_kw={'height_ratios': [2, 1]})
-        # Plot the Bollinger Bands and the SMA
-        ax.plot(stock_data_plot['Date'], stock_data_plot['SMA'], label='20-day SMA', color='blue')
-        ax.plot(stock_data_plot['Date'], stock_data_plot['UB'], label='Upper Bollinger Band', color='purple')
-        ax.plot(stock_data_plot['Date'], stock_data_plot['LB'], label='Lower Bollinger Band', color='red')
+        fig.add_trace(go.Candlestick(
+            x=stock_data_plot.index,
+            open=stock_data_plot['Open'],
+            high=stock_data_plot['High'],
+            low=stock_data_plot['Low'],
+            close=stock_data_plot['Close'],
+            name='Candlestick'), row=1, col=1)
 
+        # Plot Bollinger Bands
+        fig.add_trace(go.Scatter(
+            x=stock_data_plot.index,
+            y=stock_data_plot['UB'],
+            mode='lines',
+            name='Upper Bollinger Band',
+            line=dict(color='purple')), row=1, col=1)
 
-        # Plot the candlestick chart
-        for idx, row in stock_data_plot.iterrows():
-            color = 'g' if row['Close'] >= row['Open'] else 'r'
-            lower = min(row['Open'], row['Close'])
-            height = abs(row['Close'] - row['Open'])
-            ax.add_patch(plt.Rectangle((row['Date'] - 0.3, lower), 0.6, height, color=color))
-            ax.plot([row['Date'], row['Date']], [row['Low'], lower], color='k')
-            ax.plot([row['Date'], row['Date']], [row['High'], lower + height], color='k')
-        ax.plot(stock_data_plot['Date'], stock_data_plot['Close'], label='Close Price', color='black', linestyle='-', linewidth=1)
-        # Plot RSI as a secondary y-axis
-        ax2.plot(stock_data_plot['Date'], stock_data_plot['RSI'], label='RSI', color='orange')
-        ax2.axhline(y=self.RSI_threshold_high, color='red', linestyle='--')
-        ax2.axhline(y=self.RSI_threshold_low, color='green', linestyle='--')
-        ax2.set_ylabel('RSI')
+        fig.add_trace(go.Scatter(
+            x=stock_data_plot.index,
+            y=stock_data_plot['LB'],
+            mode='lines',
+            name='Lower Bollinger Band',
+            line=dict(color='red')), row=1, col=1)
 
-        ax.set_xlabel('Date')
-        ax.set_ylabel('Price')
-        ax.set_title('Bollinger Bands Strategy for {}'.format(self.stock.getTicker()))
-        ax.legend(loc='upper left')
-        ax2.legend(loc='upper left')
-        ax.xaxis_date()
-        ax.xaxis.set_major_formatter(dates.DateFormatter('%Y-%m-%d'))
-        plt.xticks(rotation=45)
+        fig.add_trace(go.Scatter(
+            x=stock_data_plot.index,
+            y=stock_data_plot['SMA'],
+            mode='lines',
+            name=f'{self.window}-day SMA',
+            line=dict(color='blue')), row=1, col=1)
+
+        # Plot RSI in the second subplot
+        fig.add_trace(go.Scatter(
+            x=stock_data_plot.index,
+            y=stock_data_plot['RSI'],
+            mode='lines',
+            name='RSI',
+            line=dict(color='orange')), row=2, col=1)
+
+        # Add RSI threshold lines (70 and 30)
+        fig.add_hline(y=self.RSI_threshold_high, line_dash="dash", line_color="red", row=2, col=1)
+        fig.add_hline(y=self.RSI_threshold_low, line_dash="dash", line_color="green", row=2, col=1)
+
+        # Update layout
+        fig.update_layout(
+            height =900,
+            title=f'Bollinger Bands Strategy for {self.stock.getTicker()}',
+            xaxis_title='Date',
+            yaxis_title='Price',
+            xaxis2_title='Date',  # RSI X-axis title
+            yaxis2_title='RSI',   # RSI Y-axis title
+            xaxis_rangeslider_visible=False)
+
         return fig
