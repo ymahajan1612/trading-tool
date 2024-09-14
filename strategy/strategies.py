@@ -400,3 +400,36 @@ class BollingerBandStrategy(Strategy):
             xaxis_rangeslider_visible=False)
 
         return fig
+
+
+
+# These are Machine Learning based strategies 
+class MachineLearningBasedStrategy(Strategy):
+    def __init__(self, stock, model):
+        self.model = model
+        super().__init__(stock)
+
+    def getDataAsDict(self):
+        raise NotImplementedError("Not implemented for Machine Learning based strategies")
+
+     # Abstract methods
+    @abstractmethod
+    def getName(self):
+        raise NotImplementedError()
+    
+    @abstractmethod
+    def preprocessData(self):
+        raise NotImplementedError()
+    
+    @abstractmethod
+    def generateSignal(self, current_index = -1):
+        raise NotImplementedError()
+    
+    @abstractmethod
+    def generatePlot(self, plot_window):
+        raise NotImplementedError()
+
+
+    
+
+        
