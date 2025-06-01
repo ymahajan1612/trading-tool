@@ -5,3 +5,4 @@
 /strategy/__pycache__/factory.cpython-311.pyc
 /strategy/__pycache__/strategy_mapping.cpython-311.pyc
 /strategy/__pycache__/Strategy.cpython-311.pyc
+/data/*.pkl
