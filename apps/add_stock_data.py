@@ -18,11 +18,11 @@ def app():
         database_client = DBHandler()
         error = database_client.insertStrategy(strategy, strategy_params)
         if not error:
-            st.success(f"{strategy_str} for {stock_ticker} successfully added!", icon="🚀")
+            st.success(f"{strategy_str} for {stock_ticker} successfully added!")
             time.sleep(2)
             st.rerun()
         else:
-            st.error(error, icon="🚨")
+            st.error(error)
 
     # Create strategy factory
     factory = StrategyFactory()
@@ -46,7 +46,7 @@ def app():
     if optimise_button:
         stock = StockData(stock_ticker)
         if stock.getError():
-            st.error(stock.getError(), icon="🚨")
+            st.error(stock.getError())
         else:
             with st.spinner("Optimising Parameters..."):
                 optimiser = WalkForwardOptimisation(strategy_str, stock)
@@ -97,7 +97,7 @@ def app():
     if save_button:
         stock = StockData(stock_ticker)
         if stock.getError():
-            st.error(stock.getError(), icon="🚨")
+            st.error(stock.getError())
         else:
             strategy = factory.createStrategy(strategy_str, stock, **strategy_params)
             addStockToDatabase(strategy, strategy_str, strategy_params)
